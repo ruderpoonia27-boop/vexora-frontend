@@ -7,6 +7,9 @@ import { Helmet } from 'react-helmet';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
 
 const PENDING_REFERRAL_KEY = 'pendingReferralCode';
+const isProfileSetupComplete = (user) => (
+  user?.profileSetupCompleted !== false && user?.profile_setup_completed !== false
+);
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -29,8 +32,8 @@ const LoginPage = () => {
     setLoading(true);
     
     try {
-      await login(email, password);
-      navigate('/home', { replace: true });
+      const data = await login(email, password);
+      navigate(isProfileSetupComplete(data.user) ? '/home' : '/profile-setup', { replace: true });
     } catch (err) {
       console.error(err);
       setError('Invalid email or password. Please try again.');

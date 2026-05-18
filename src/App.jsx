@@ -19,6 +19,7 @@ import PwaStartupScreen from './components/PwaStartupScreen';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import ProfileSetupPage from './pages/ProfileSetupPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import TournamentsPage from './pages/TournamentsPage';
 import TournamentDetailPage from './pages/TournamentDetailPage';
@@ -61,6 +62,21 @@ const PageTransitionWrapper = ({ children }) => {
   );
 };
 
+const ProfileSetupGate = ({ children }) => {
+  const { isAuthenticated, currentUser } = useAuth();
+  const location = useLocation();
+  const needsProfileSetup = isAuthenticated
+    && currentUser
+    && !currentUser.isAdmin
+    && (currentUser.profileSetupCompleted === false || currentUser.profile_setup_completed === false);
+
+  if (needsProfileSetup && location.pathname !== '/profile-setup') {
+    return <Navigate to="/profile-setup" replace />;
+  }
+
+  return children;
+};
+
 // Layout wrapper to conditionally show Footer
 const MainLayout = ({ children }) => {
   const location = useLocation();
@@ -82,11 +98,17 @@ const MainLayout = ({ children }) => {
 
 const AnimatedRoutes = () => {
   return (
+    <ProfileSetupGate>
     <Routes>
       <Route path="/" element={<PageTransitionWrapper><HomePage /></PageTransitionWrapper>} />
       <Route path="/home" element={<PageTransitionWrapper><HomePage /></PageTransitionWrapper>} />
       <Route path="/login" element={<PageTransitionWrapper><LoginPage /></PageTransitionWrapper>} />
       <Route path="/signup" element={<PageTransitionWrapper><SignupPage /></PageTransitionWrapper>} />
+      <Route path="/profile-setup" element={
+          <ProtectedRoute>
+              <PageTransitionWrapper><ProfileSetupPage /></PageTransitionWrapper>
+          </ProtectedRoute>
+      } />
       <Route path="/admin-login" element={<PageTransitionWrapper><AdminLoginPage /></PageTransitionWrapper>} />
       <Route path="/ref/:code" element={<PageTransitionWrapper><ReferralRedirectPage /></PageTransitionWrapper>} />
       
@@ -148,6 +170,7 @@ const AnimatedRoutes = () => {
       
       <Route path="*" element={<PageTransitionWrapper><NotFoundPage /></PageTransitionWrapper>} />
     </Routes>
+    </ProfileSetupGate>
   );
 };
 

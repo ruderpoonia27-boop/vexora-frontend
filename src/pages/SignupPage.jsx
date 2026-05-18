@@ -6,15 +6,11 @@ import { Loader2, Gift } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { SUPPORT_EMAIL } from '@/data/legalContent';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
-import AvatarSelectionGrid from '@/components/AvatarSelectionGrid';
-import GameAvatar from '@/components/GameAvatar';
-import { DEFAULT_AVATAR_ID } from '@/data/avatarCatalog';
 
 const PENDING_REFERRAL_KEY = 'pendingReferralCode';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
     passwordConfirm: ''
@@ -22,7 +18,6 @@ const SignupPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
-  const [selectedAvatarId, setSelectedAvatarId] = useState(DEFAULT_AVATAR_ID);
   const [searchParams] = useSearchParams();
   
   const { signup } = useAuth();
@@ -69,14 +64,12 @@ const SignupPage = () => {
       await signup({
         email: formData.email.trim(),
         password: formData.password,
-        name: formData.name.trim(),
         referralCode: referralCode.trim(),
-        avatarId: selectedAvatarId,
         acceptedPolicies
       });
       sessionStorage.removeItem(PENDING_REFERRAL_KEY);
       
-      navigate('/home', { replace: true });
+      navigate('/profile-setup', { replace: true });
     } catch (err) {
       console.error(err);
       if (err.message === 'Email already exists') {
@@ -119,35 +112,6 @@ const SignupPage = () => {
         ) : null}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="rounded-2xl border border-primary/20 bg-primary/8 p-4">
-            <div className="mb-3 flex items-center gap-3">
-              <GameAvatar avatarId={selectedAvatarId} name={formData.name || 'Player'} size="lg" />
-              <div>
-                <p className="text-sm font-bold text-foreground">Your Battle Avatar</p>
-                <p className="text-xs text-muted-foreground">Choose a gaming identity for your profile and matches.</p>
-              </div>
-            </div>
-            <AvatarSelectionGrid
-              selectedAvatarId={selectedAvatarId}
-              onSelect={setSelectedAvatarId}
-              compact
-              title="Select Avatar"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1">In-Game Name / Username</label>
-            <input
-              type="text"
-              name="name"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full bg-input border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-              placeholder="ProGamer99"
-            />
-          </div>
-          
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">Email</label>
             <input

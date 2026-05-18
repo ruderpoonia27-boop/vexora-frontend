@@ -1,0 +1,186 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Bell, Trophy, Wallet, Info, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import apiClient from '@/lib/apiClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+
+const NotificationCenter = () => {
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const seenNotificationIdsRef = useRef(new Set());
+  const hasLoadedRef = useRef(false);
+
+  const fetchNotifications = async ({ announceNew = false, showLoading = true } = {}) => {
+    if (!currentUser) {
+      setNotifications([]);
+      seenNotificationIdsRef.current = new Set();
+      hasLoadedRef.current = false;
+      return;
+    }
+
+    if (showLoading) setLoading(true);
+    try {
+      const result = await apiClient.get('/notifications?page=1&perPage=50');
+      const items = result.items || [];
+      const freshWinner = items.find((notification) => (
+        announceNew
+        && hasLoadedRef.current
+        && notification.type === 'winner'
+        && notification._id
+        && !seenNotificationIdsRef.current.has(notification._id)
+      ));
+
+      setNotifications(items);
+      seenNotificationIdsRef.current = new Set(items.map((notification) => notification._id).filter(Boolean));
+      hasLoadedRef.current = true;
+
+      if (freshWinner) {
+        toast({
+          title: 'Match reward credited',
+          description: freshWinner.message
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      if (showLoading) setNotifications([]);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications({ showLoading: true });
+    if (!currentUser) return undefined;
+
+    const handleFocus = () => fetchNotifications({ announceNew: true, showLoading: false });
+    const intervalId = window.setInterval(() => {
+      fetchNotifications({ announceNew: true, showLoading: false });
+    }, 15000);
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [currentUser?._id, currentUser?.id]);
+
+  const unreadCount = useMemo(() => notifications.filter((notification) => !notification.read).length, [notifications]);
+
+  const markAsRead = async (id) => {
+    try {
+      await apiClient.put(`/notifications/${id}`, { read: true });
+      setNotifications((current) => current.map((notification) => (
+        notification._id === id ? { ...notification, read: true } : notification
+      )));
+    } catch (error) {
+      console.error('Failed to mark notification as read', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    const unread = notifications.filter((notification) => !notification.read);
+    for (const notification of unread) {
+      // eslint-disable-next-line no-await-in-loop
+      await markAsRead(notification._id);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    await markAsRead(notification._id);
+    if (notification.link) {
+      navigate(notification.link);
+      setIsOpen(false);
+    }
+  };
+
+  const getIcon = (type) => {
+    switch (type) {
+      case 'tournament':
+        return <Trophy className="w-4 h-4 text-primary" />;
+      case 'wallet':
+        return <Wallet className="w-4 h-4 text-secondary" />;
+      case 'winner':
+        return <Trophy className="w-4 h-4 text-accent" />;
+      default:
+        return <Info className="w-4 h-4 text-muted-foreground" />;
+    }
+  };
+
+  if (!currentUser) return null;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen((current) => !current)}
+        className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-card"
+      >
+        <Bell className="w-5 h-5" />
+        {unreadCount > 0 ? (
+          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background"></span>
+        ) : null}
+      </button>
+
+      {isOpen ? (
+        <div className="absolute right-0 mt-2 w-80 bg-card border border-border/50 rounded-2xl shadow-2xl overflow-hidden z-50 box-glow-primary">
+          <div className="p-4 border-b border-border/50 flex justify-between items-center bg-background/50">
+            <h3 className="font-bold text-foreground">Notifications</h3>
+            {unreadCount > 0 ? (
+              <button onClick={markAllAsRead} className="text-xs text-primary hover:underline flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Mark all read
+              </button>
+            ) : null}
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground text-sm animate-pulse">Loading...</div>
+            ) : notifications.length > 0 ? (
+              <div className="divide-y divide-border/50">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification._id}
+                    onClick={() => handleNotificationClick(notification)}
+                    className={`p-4 hover:bg-background/50 transition-colors cursor-pointer flex gap-3 ${!notification.read ? 'bg-primary/5' : ''}`}
+                  >
+                    <div className="mt-1">{getIcon(notification.type)}</div>
+                    <div>
+                      <p className={`text-sm ${!notification.read ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">
+                        {new Date(notification.createdAt || notification.created).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                No notifications yet.
+              </div>
+            )}
+          </div>
+
+          <div className="p-3 border-t border-border/50 text-center bg-background/50">
+            <button
+              onClick={() => {
+                navigate('/profile');
+                setIsOpen(false);
+              }}
+              className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              View Profile
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+export default NotificationCenter;

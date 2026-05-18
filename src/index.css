@@ -1,0 +1,231 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: #080d1c;
+}
+
+body {
+  font-family: "Outfit", sans-serif;
+  overflow-x: hidden;
+  overscroll-behavior-y: auto;
+  background: #080d1c;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: contain;
+    user-select: none;
+  }
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer base {
+  :root {
+    --background: 232 59% 10%; /* #0a0e27 */
+    --foreground: 0 0% 100%; /* #ffffff */
+    
+    --primary: 190 100% 50%; /* #00d4ff neon blue */
+    --primary-foreground: 232 59% 10%;
+    
+    --secondary: 135 100% 50%; /* #00ff41 lime green */
+    --secondary-foreground: 232 59% 10%;
+    
+    --accent: 293 80% 60%; /* #d946ef purple */
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 100% 50%; /* #ff0000 */
+    --destructive-foreground: 0 0% 100%;
+    
+    --muted: 215 14% 46%; /* #6b7280 */
+    --muted-foreground: 215 20% 80%;
+    
+    --card: 231 38% 16%; /* #1a1f3a */
+    --card-foreground: 0 0% 100%;
+    
+    --border: 217 24% 23%; /* #2d3748 */
+    --input: 210 25% 7%; /* #0f1419 */
+    --ring: 190 100% 50%; /* #00d4ff */
+
+    /* Admin specific semantic tokens */
+    --admin-sidebar: 232 60% 8%;
+    --admin-sidebar-foreground: 0 0% 100%;
+    --admin-card: 231 38% 14%;
+    --admin-card-hover: 231 38% 18%;
+    
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    --background: 232 59% 10%;
+    --foreground: 0 0% 100%;
+    
+    --primary: 190 100% 50%;
+    --primary-foreground: 232 59% 10%;
+    
+    --secondary: 135 100% 50%;
+    --secondary-foreground: 232 59% 10%;
+    
+    --accent: 293 80% 60%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --muted: 215 14% 46%;
+    --muted-foreground: 215 20% 80%;
+    
+    --card: 231 38% 16%;
+    --card-foreground: 0 0% 100%;
+    
+    --border: 217 24% 23%;
+    --input: 210 25% 7%;
+    --ring: 190 100% 50%;
+
+    --admin-sidebar: 232 60% 8%;
+    --admin-sidebar-foreground: 0 0% 100%;
+    --admin-card: 231 38% 14%;
+    --admin-card-hover: 231 38% 18%;
+  }
+}
+
+@layer utilities {
+  .text-glow-primary {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.5), 0 0 20px hsl(var(--primary) / 0.3);
+  }
+  .text-glow-secondary {
+    text-shadow: 0 0 10px hsl(var(--secondary) / 0.5), 0 0 20px hsl(var(--secondary) / 0.3);
+  }
+  .box-glow-primary {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.2), inset 0 0 10px hsl(var(--primary) / 0.1);
+  }
+  .box-glow-accent {
+    box-shadow: 0 0 15px hsl(var(--accent) / 0.2), inset 0 0 10px hsl(var(--accent) / 0.1);
+  }
+  
+  .hero-gaming-bg {
+    background-image: linear-gradient(to bottom, rgba(10, 14, 39, 0.6), rgba(10, 14, 39, 0.95)), url('https://horizons-cdn.hostinger.com/063a4c04-36c3-4d14-b1c9-01eacde01c0f/0b09a00dbafa5944225fa25f25679cf9.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  .pwa-startup-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: max(env(safe-area-inset-top), 24px) 24px max(env(safe-area-inset-bottom), 24px);
+    background:
+      radial-gradient(circle at 50% 18%, rgba(0, 212, 255, 0.22), transparent 34%),
+      radial-gradient(circle at 72% 72%, rgba(217, 70, 239, 0.18), transparent 36%),
+      linear-gradient(180deg, #0a0e27, #080d1c 58%, #050817);
+    animation: pwaStartupFade 0.28s ease-out 0.72s forwards;
+  }
+
+  .pwa-startup-logo {
+    width: min(290px, 74vw);
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.34)) drop-shadow(0 0 26px hsl(var(--accent) / 0.18));
+    animation: pwaLogoPulse 1.15s ease-in-out infinite alternate;
+  }
+
+  .pwa-startup-subtitle {
+    margin-top: 14px;
+    color: hsl(var(--muted-foreground));
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+  }
+
+  .pwa-startup-bar {
+    width: min(220px, 58vw);
+    height: 4px;
+    margin-top: 24px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .pwa-startup-bar span {
+    display: block;
+    width: 42%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)));
+    animation: pwaLoading 0.9s ease-in-out infinite;
+  }
+
+  @keyframes pwaLoading {
+    0% {
+      transform: translateX(-110%);
+    }
+    100% {
+      transform: translateX(250%);
+    }
+  }
+
+  @keyframes pwaStartupFade {
+    to {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+
+  @keyframes pwaLogoPulse {
+    from {
+      transform: translateY(0) scale(0.985);
+      opacity: 0.88;
+    }
+    to {
+      transform: translateY(-3px) scale(1);
+      opacity: 1;
+    }
+  }
+
+  @media (display-mode: standalone) {
+    header {
+      padding-top: env(safe-area-inset-top);
+    }
+
+    main {
+      min-height: calc(100vh - env(safe-area-inset-top));
+    }
+
+    .fixed.inset-x-0.bottom-0 {
+      bottom: env(safe-area-inset-bottom);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero-gaming-bg {
+      background-attachment: scroll;
+    }
+  }
+
+  /* Admin panel specific utilities */
+  .admin-glass-panel {
+    @apply bg-[hsl(var(--admin-card))] border border-border/50 backdrop-blur-xl shadow-lg;
+  }
+}

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'vexora-pwa-v2';
+const CACHE_VERSION = 'vexora-pwa-v3';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -62,17 +62,15 @@ self.addEventListener('fetch', (event) => {
   const destination = request.destination;
   if (['style', 'script', 'worker', 'font', 'image', 'manifest'].includes(destination)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const networkFetch = fetch(request).then((response) => {
+      fetch(request)
+        .then((response) => {
           if (response && response.ok) {
             const copy = response.clone();
             caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
           }
           return response;
-        }).catch(() => cached);
-
-        return cached || networkFetch;
-      })
+        })
+        .catch(() => caches.match(request))
     );
   }
 });

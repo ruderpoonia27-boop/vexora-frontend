@@ -7,6 +7,7 @@ const PwaInstallPrompt = () => {
   const location = useLocation();
   const [installPrompt, setInstallPrompt] = useState(null);
   const [visible, setVisible] = useState(true);
+  const [showInstallTip, setShowInstallTip] = useState(false);
   const isHomePage = location.pathname === '/' || location.pathname === '/home';
 
   useEffect(() => {
@@ -36,11 +37,16 @@ const PwaInstallPrompt = () => {
   useEffect(() => {
     if (isHomePage && !isStandaloneMode()) {
       setVisible(true);
+      setShowInstallTip(false);
     }
   }, [isHomePage]);
 
   const installApp = async () => {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      setShowInstallTip(true);
+      return;
+    }
+
     installPrompt.prompt();
     await installPrompt.userChoice;
     setInstallPrompt(null);
@@ -51,7 +57,7 @@ const PwaInstallPrompt = () => {
     setVisible(false);
   };
 
-  if (!visible || !installPrompt || !isHomePage) return null;
+  if (!visible || !isHomePage || isStandaloneMode()) return null;
 
   return (
     <div className="fixed inset-x-3 bottom-[calc(6.8rem+env(safe-area-inset-bottom))] z-[70] mx-auto max-w-md rounded-2xl border border-primary/25 bg-[rgba(9,14,31,0.94)] p-3 pl-10 text-foreground shadow-[0_18px_60px_rgba(0,0,0,0.55),0_0_28px_rgba(0,212,255,0.16)] backdrop-blur-2xl lg:bottom-6 lg:right-6 lg:left-auto">
@@ -67,7 +73,9 @@ const PwaInstallPrompt = () => {
         <img src="/icons/vexora-icon-96.png" alt="Vexora" className="h-11 w-11 shrink-0 rounded-xl object-cover shadow-[0_0_18px_rgba(0,212,255,0.26)]" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-black">Install Vexora</p>
-          <p className="text-xs text-muted-foreground">Open fullscreen from your home screen.</p>
+          <p className="text-xs text-muted-foreground">
+            {showInstallTip ? 'Use your browser menu to add this app.' : 'Open fullscreen from your home screen.'}
+          </p>
         </div>
         <button
           type="button"

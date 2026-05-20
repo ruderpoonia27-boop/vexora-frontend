@@ -18,10 +18,11 @@ export const Footer = () => {
   const { settings } = useSettings();
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isInstalledView, setIsInstalledView] = useState(() => isStandaloneMode());
+  const [showInstallTip, setShowInstallTip] = useState(false);
   const supportEmail = settings?.contact_email || settings?.contactEmail || SUPPORT_EMAIL;
   const platformName = getPlatformName(settings);
   const companyName = COMPANY_NAME.replaceAll(PLATFORM_NAME, platformName);
-  const canInstall = !isInstalledView && installPrompt;
+  const showDownloadButton = !isInstalledView;
 
   useEffect(() => {
     if (isStandaloneMode()) {
@@ -49,10 +50,15 @@ export const Footer = () => {
   }, []);
 
   const installApp = async () => {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      setShowInstallTip(true);
+      return;
+    }
+
     installPrompt.prompt();
     await installPrompt.userChoice;
     setInstallPrompt(null);
+    setShowInstallTip(false);
   };
 
   return (
@@ -67,15 +73,22 @@ export const Footer = () => {
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
               Competitive mobile esports tournaments, wallet-based entries, referral rewards, and admin-reviewed payouts in one premium arena.
             </p>
-            {canInstall && (
-              <button
-                type="button"
-                onClick={installApp}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground shadow-[0_0_22px_rgba(0,212,255,0.18)] transition-colors hover:bg-primary/90"
-              >
-                <Download className="h-4 w-4" />
-                <span>Download App</span>
-              </button>
+            {showDownloadButton && (
+              <div className="mt-5">
+                <button
+                  type="button"
+                  onClick={installApp}
+                  className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground shadow-[0_0_22px_rgba(0,212,255,0.18)] transition-colors hover:bg-primary/90"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download App</span>
+                </button>
+                {showInstallTip && (
+                  <p className="mt-2 max-w-sm text-xs text-muted-foreground">
+                    If the install prompt does not open, use your browser menu to add this app.
+                  </p>
+                )}
+              </div>
             )}
             <div className="mt-5 rounded-2xl border border-primary/15 bg-primary/8 p-4 text-sm text-muted-foreground">
               <div className="flex items-start gap-3">

@@ -50,7 +50,7 @@ const LoginPage = () => {
       
       <div className="w-full max-w-md bg-card border border-border/50 rounded-2xl p-8 shadow-xl box-glow-primary">
         <div className="flex flex-col items-center mb-8">
-          <img src="/brand/vexora-logo.png" alt={platformName} className="mb-4 h-24 w-auto object-contain drop-shadow-[0_0_18px_rgba(0,212,255,0.38)]" />
+          <img src="/brand/vexora-logo.png" alt={platformName} width="160" height="96" loading="lazy" decoding="async" className="mb-4 h-24 w-auto object-contain drop-shadow-[0_0_18px_rgba(0,212,255,0.38)]" />
           <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
           <p className="text-muted-foreground text-sm mt-2">Enter your credentials to access your account</p>
         </div>

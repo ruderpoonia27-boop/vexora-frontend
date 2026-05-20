@@ -20,7 +20,7 @@ export const useSettings = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const result = await apiClient.get('/settings');
+        const result = await apiClient.get('/settings', { cacheTtl: 300000 });
         if (result && result.length > 0) {
           setSettings({
             platform_name: result[0].platform_name || result[0].platformName || DEFAULT_PLATFORM_NAME,

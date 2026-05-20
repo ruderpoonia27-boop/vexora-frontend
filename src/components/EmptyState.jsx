@@ -1,14 +1,11 @@
 
 import React from 'react';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const EmptyState = ({ icon: Icon, title, message, actionText, onAction, className }) => {
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn("flex flex-col items-center justify-center p-12 text-center bg-card/30 rounded-3xl border border-dashed border-border/50", className)}
+    <div
+      className={cn("page-transition flex flex-col items-center justify-center p-12 text-center bg-card/30 rounded-3xl border border-dashed border-border/50", className)}
     >
       {Icon && (
         <div className="w-16 h-16 bg-muted/20 rounded-2xl flex items-center justify-center mb-6 text-muted-foreground">
@@ -26,7 +23,7 @@ const EmptyState = ({ icon: Icon, title, message, actionText, onAction, classNam
           {actionText}
         </button>
       )}
-    </motion.div>
+    </div>
   );
 };
 

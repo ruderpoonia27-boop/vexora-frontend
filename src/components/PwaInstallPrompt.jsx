@@ -70,7 +70,7 @@ const PwaInstallPrompt = () => {
         <X className="h-4 w-4" />
       </button>
       <div className="flex items-center gap-3">
-        <img src="/icons/vexora-icon-96.png" alt="Vexora" className="h-11 w-11 shrink-0 rounded-xl object-cover shadow-[0_0_18px_rgba(0,212,255,0.26)]" />
+        <img src="/icons/vexora-icon-96.png" alt="Vexora" width="44" height="44" loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-xl object-cover shadow-[0_0_18px_rgba(0,212,255,0.26)]" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-black">Install Vexora</p>
           <p className="text-xs text-muted-foreground">

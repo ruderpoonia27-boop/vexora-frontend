@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, ChevronLeft, ChevronRight, SlidersHorizontal, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -73,6 +72,10 @@ const TournamentsPage = () => {
       }
 
       try {
+        if (!showLoading && document.visibilityState === 'hidden') {
+          return;
+        }
+
         const params = new URLSearchParams({
           page,
           limit: perPage,
@@ -84,7 +87,7 @@ const TournamentsPage = () => {
         if (filters.status.length > 0) params.set('status', filters.status.join(','));
         if (activeView === 'joined' && currentUserId) params.set('joinedUserId', currentUserId);
 
-        const data = await apiClient.get(`/tournaments?${params.toString()}`);
+        const data = await apiClient.get(`/tournaments?${params.toString()}`, { cacheTtl: 10000 });
         if (!isMounted) return;
         const nextTournaments = data.items || data.tournaments || [];
         setTournaments(nextTournaments);
@@ -108,7 +111,7 @@ const TournamentsPage = () => {
 
     const intervalId = window.setInterval(() => {
       fetchTournaments(false);
-    }, 15000);
+    }, 30000);
 
     window.addEventListener('focus', handleFocus);
 
@@ -292,23 +295,13 @@ const TournamentsPage = () => {
               </div>
             ) : enrichedTournaments.length > 0 ? (
               <div className="space-y-8">
-                <motion.div layout className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  <AnimatePresence>
-                    {enrichedTournaments.map((tournament) => (
-                      <motion.div
-                        layout
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        key={tournament.id}
-                        className="h-full"
-                      >
-                        <TournamentCard tournament={tournament} onJoin={handleJoin} />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {enrichedTournaments.map((tournament) => (
+                    <div key={tournament.id} className="h-full content-auto">
+                      <TournamentCard tournament={tournament} onJoin={handleJoin} />
+                    </div>
+                  ))}
+                </div>
 
                 {totalPages > 1 ? (
                   <div className="flex items-center justify-center gap-4 pt-8 border-t border-border/50">

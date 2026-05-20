@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
   Check,
@@ -165,36 +164,22 @@ const SquadLobbyPage = () => {
             </div>
 
             <div className="mb-5 overflow-hidden rounded-full border border-primary/15 bg-[rgba(11,17,36,0.95)]">
-              <motion.div
+              <div
                 className={`h-3 ${squad.isComplete ? 'bg-secondary' : 'bg-primary'}`}
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 0.4 }}
+                style={{ width: `${progressPercent}%`, transition: 'width 240ms ease' }}
               />
             </div>
 
-            <AnimatePresence mode="wait">
+            <div className="page-transition" key={squad.isComplete ? 'complete' : 'waiting'}>
               {squad.isComplete ? (
-                <motion.div
-                  key="complete"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="mb-6 rounded-2xl border border-secondary/25 bg-secondary/10 p-4"
-                >
+                <div className="mb-6 rounded-2xl border border-secondary/25 bg-secondary/10 p-4">
                   <div className="flex items-center gap-2 text-secondary">
                     <Sparkles className="h-5 w-5" />
                     <p className="font-bold">Squad complete. Your team is ready for battle.</p>
                   </div>
-                </motion.div>
+                </div>
               ) : (
-                <motion.div
-                  key="waiting"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className="mb-6 rounded-2xl border border-accent/20 bg-accent/10 p-4"
-                >
+                <div className="mb-6 rounded-2xl border border-accent/20 bg-accent/10 p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1">
                       <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-accent" />
@@ -203,9 +188,9 @@ const SquadLobbyPage = () => {
                     </div>
                     <p className="text-sm font-medium text-accent">Waiting for {squad.remainingSlots} teammate(s) to join.</p>
                   </div>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               {squad.members.map((member) => (

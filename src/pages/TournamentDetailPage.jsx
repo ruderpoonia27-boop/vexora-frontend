@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Trophy, Zap, Shield, Loader2, CalendarClock, Copy, Check, Clock, Crown, RotateCcw, Users, XCircle, Gift } from 'lucide-react';
@@ -406,25 +405,17 @@ const TournamentDetailPage = () => {
                 <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><Zap className="w-4 h-4" /> Entry Fee</p>
                 <p className="text-3xl font-bold">Rs.{entryFee}</p>
               </div>
-              <motion.div
-                animate={{ boxShadow: ['0 0 18px rgba(59,130,246,0.16)', '0 0 34px rgba(59,130,246,0.28)', '0 0 18px rgba(59,130,246,0.16)'] }}
-                transition={{ duration: 2.6, repeat: Infinity }}
-                className="bg-background/50 p-6 rounded-2xl border border-primary/30 text-center box-glow-primary"
-              >
+              <div className="bg-background/50 p-6 rounded-2xl border border-primary/30 text-center box-glow-primary">
                 <p className="text-primary mb-2 flex items-center justify-center gap-2"><Trophy className="w-4 h-4" /> Prize Pool</p>
                 <p className="text-4xl md:text-5xl font-bold text-glow-primary text-primary">Rs.{currentPrizePool}</p>
-              </motion.div>
+              </div>
               {matchType === 'squad' ? (
                 <>
-                  <motion.div
-                    animate={{ boxShadow: ['0 0 18px rgba(34,211,238,0.12)', '0 0 34px rgba(34,211,238,0.24)', '0 0 18px rgba(34,211,238,0.12)'] }}
-                    transition={{ duration: 2.8, repeat: Infinity }}
-                    className="bg-background/50 p-6 rounded-2xl border border-accent/30 text-center"
-                  >
+                  <div className="bg-background/50 p-6 rounded-2xl border border-accent/30 text-center soft-neon-tile">
                     <p className="text-accent mb-2 flex items-center justify-center gap-2"><Crown className="w-4 h-4" /> First Prize</p>
                     <p className="text-3xl font-bold text-accent text-glow-accent">Rs.{prizeBreakdown.firstPrize}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{prizeBreakdown.firstPrizePercentage}% of prize pool</p>
-                  </motion.div>
+                  </div>
                   <div className="bg-background/50 p-6 rounded-2xl border border-border/50 text-center">
                 <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><Users className="w-4 h-4" /> Squad Size</p>
                     <p className="text-3xl font-bold">{prizeBreakdown.squadSize}</p>

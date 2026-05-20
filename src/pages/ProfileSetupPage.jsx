@@ -68,7 +68,7 @@ const ProfileSetupPage = () => {
 
       <div className="w-full max-w-lg bg-card border border-border/50 rounded-2xl p-8 shadow-xl box-glow-primary">
         <div className="flex flex-col items-center mb-8 text-center">
-          <img src="/brand/vexora-logo.png" alt={platformName} className="mb-4 h-20 w-auto object-contain drop-shadow-[0_0_18px_rgba(0,212,255,0.38)]" />
+          <img src="/brand/vexora-logo.png" alt={platformName} width="150" height="80" loading="lazy" decoding="async" className="mb-4 h-20 w-auto object-contain drop-shadow-[0_0_18px_rgba(0,212,255,0.38)]" />
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary">
             <Sparkles className="h-7 w-7" />
           </div>

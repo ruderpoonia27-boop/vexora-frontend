@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useAuth } from '@/contexts/AuthContext';
 import { LayoutDashboard, Trophy, Wallet, Settings, ArrowLeft, Menu, X, Banknote, Users, Megaphone } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
 
 import { AdminHome } from './AdminHome';
@@ -112,33 +111,17 @@ export const AdminPanel = () => {
         </button>
       </div>
 
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.aside 
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-[hsl(var(--admin-sidebar))] flex flex-col top-[65px] h-[calc(100vh-65px)] overflow-y-auto"
-          >
+      {isMobileMenuOpen && (
+          <aside className="page-transition md:hidden fixed inset-x-0 bottom-0 z-40 bg-[hsl(var(--admin-sidebar))] flex flex-col top-[65px] h-[calc(100vh-65px)] overflow-y-auto">
             <NavContent />
-          </motion.aside>
+          </aside>
         )}
-      </AnimatePresence>
 
       {/* Main Content Area */}
       <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-10">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="h-full"
-          >
+          <div key={activeTab} className="page-transition h-full">
             <ActiveComponent />
-          </motion.div>
-        </AnimatePresence>
+          </div>
       </main>
     </div>
   );

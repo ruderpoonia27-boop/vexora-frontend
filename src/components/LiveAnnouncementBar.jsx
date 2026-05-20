@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { ChevronRight, RadioTower, Sparkles } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 
@@ -31,7 +30,7 @@ const LiveAnnouncementBar = () => {
 
   const loadAnnouncements = async () => {
     try {
-      const result = await apiClient.get('/announcements');
+      const result = await apiClient.get('/announcements', { cacheTtl: 5000 });
       setAnnouncements(result.items || []);
     } catch (error) {
       console.error('Failed to load announcements:', error);
@@ -41,15 +40,22 @@ const LiveAnnouncementBar = () => {
 
   useEffect(() => {
     loadAnnouncements();
-    const refreshInterval = window.setInterval(loadAnnouncements, 5000);
+    let refreshInterval = null;
     let events = null;
     if (typeof EventSource !== 'undefined') {
       events = new EventSource(`${apiClient.baseURL}/announcements/events`);
       events.addEventListener('announcements:update', loadAnnouncements);
+      events.addEventListener('error', () => {
+        if (!refreshInterval) {
+          refreshInterval = window.setInterval(loadAnnouncements, 30000);
+        }
+      });
+    } else {
+      refreshInterval = window.setInterval(loadAnnouncements, 30000);
     }
 
     return () => {
-      window.clearInterval(refreshInterval);
+      if (refreshInterval) window.clearInterval(refreshInterval);
       events?.close();
     };
   }, []);
@@ -63,9 +69,11 @@ const LiveAnnouncementBar = () => {
   }, [announcements.length]);
 
   useEffect(() => {
+    const hasCountdown = announcements.some((announcement) => announcement.showCountdown);
+    if (!hasCountdown) return undefined;
     const tickInterval = window.setInterval(() => setNowTick((current) => current + 1), 1000);
     return () => window.clearInterval(tickInterval);
-  }, []);
+  }, [announcements]);
 
   useEffect(() => {
     if (activeIndex >= announcements.length) setActiveIndex(0);
@@ -94,10 +102,9 @@ const LiveAnnouncementBar = () => {
               <RadioTower className="h-3.5 w-3.5 animate-pulse" /> Live
             </div>
             <div className="min-w-0 flex-1 overflow-hidden">
-              <motion.div
+              <div
                 className="flex min-w-max gap-6 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground"
-                animate={{ x: ['0%', '-50%'] }}
-                transition={{ duration: Math.max(18, announcements.length * 7), repeat: Infinity, ease: 'linear' }}
+                style={{ '--marquee-duration': `${Math.max(18, announcements.length * 7)}s` }}
               >
                 {marqueeItems.map((item, index) => (
                   <span key={`${item.id || item._id}_${index}`} className="inline-flex items-center gap-2">
@@ -105,21 +112,16 @@ const LiveAnnouncementBar = () => {
                     <span>{item.title}</span>
                   </span>
                 ))}
-              </motion.div>
+              </div>
             </div>
           </div>
 
           <div className="grid gap-3 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <motion.button
+            <button
               key={activeAnnouncement.id || activeAnnouncement._id || activeIndex}
               type="button"
               onClick={() => openAnnouncement(activeAnnouncement)}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28 }}
-              className={`group relative overflow-hidden rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,rgba(0,212,255,0.12),rgba(217,70,239,0.08),rgba(8,13,28,0.8))] p-4 text-left transition-all hover:border-primary/50 hover:shadow-[0_0_34px_rgba(0,212,255,0.18)] ${
+              className={`announcement-card group relative overflow-hidden rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,rgba(0,212,255,0.12),rgba(217,70,239,0.08),rgba(8,13,28,0.8))] p-4 text-left transition-all hover:border-primary/50 hover:shadow-[0_0_20px_rgba(0,212,255,0.14)] ${
                 activeAnnouncement.isImportant ? 'animate-pulse' : ''
               }`}
             >
@@ -156,7 +158,7 @@ const LiveAnnouncementBar = () => {
                   ) : null}
                 </div>
               </div>
-            </motion.button>
+            </button>
 
             <div className="flex justify-center gap-2 lg:flex-col">
               {announcements.map((item, index) => (

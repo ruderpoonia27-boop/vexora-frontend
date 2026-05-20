@@ -17,7 +17,11 @@ export const usePaymentSettings = ({ autoRefresh = true } = {}) => {
     }
 
     try {
-      const records = await apiClient.get('/payment-settings');
+      if (!showLoading && document.visibilityState === 'hidden') {
+        return;
+      }
+
+      const records = await apiClient.get('/payment-settings', { cacheTtl: 60000 });
       const record = records?.[0];
       if (record) {
         setRecordId(record._id || record.id || null);
@@ -51,7 +55,7 @@ export const usePaymentSettings = ({ autoRefresh = true } = {}) => {
 
     const intervalId = window.setInterval(() => {
       fetchPaymentSettings(false);
-    }, 15000);
+    }, 30000);
 
     window.addEventListener('focus', handleFocus);
     return () => {

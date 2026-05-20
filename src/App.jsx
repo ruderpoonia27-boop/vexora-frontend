@@ -1,7 +1,6 @@
 
-import React from 'react';
+import React, { Suspense, lazy, memo } from 'react';
 import { Navigate, Route, Routes, BrowserRouter as Router, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster } from './components/ui/sonner';
 import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -15,52 +14,59 @@ import FloatingWhatsAppButton from './components/FloatingWhatsAppButton';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import PwaStartupScreen from './components/PwaStartupScreen';
 
-// Pages
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import ProfileSetupPage from './pages/ProfileSetupPage';
-import AdminLoginPage from './pages/AdminLoginPage';
-import TournamentsPage from './pages/TournamentsPage';
-import TournamentDetailPage from './pages/TournamentDetailPage';
-import SquadLobbyPage from './pages/SquadLobbyPage';
-import WalletPage from './pages/WalletPage';
-import AdminDashboard from './pages/AdminDashboard';
-import UserProfilePage from './pages/UserProfilePage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import RefundPolicyPage from './pages/RefundPolicyPage';
-import FairPlayPolicyPage from './pages/FairPlayPolicyPage';
-import CommunityGuidelinesPage from './pages/CommunityGuidelinesPage';
-import ContactPage from './pages/ContactPage';
-import ReferralPage from './pages/ReferralPage';
-import ReferralRedirectPage from './pages/ReferralRedirectPage';
-import { AdminPanel } from './pages/admin/AdminPanel';
-import AdminTournamentDetailPage from './pages/admin/AdminTournamentDetailPage';
+const HomePage = lazy(() => import('./pages/HomePage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignupPage = lazy(() => import('./pages/SignupPage'));
+const ProfileSetupPage = lazy(() => import('./pages/ProfileSetupPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const TournamentsPage = lazy(() => import('./pages/TournamentsPage'));
+const TournamentDetailPage = lazy(() => import('./pages/TournamentDetailPage'));
+const SquadLobbyPage = lazy(() => import('./pages/SquadLobbyPage'));
+const WalletPage = lazy(() => import('./pages/WalletPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'));
+const FairPlayPolicyPage = lazy(() => import('./pages/FairPlayPolicyPage'));
+const CommunityGuidelinesPage = lazy(() => import('./pages/CommunityGuidelinesPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const ReferralPage = lazy(() => import('./pages/ReferralPage'));
+const ReferralRedirectPage = lazy(() => import('./pages/ReferralRedirectPage'));
+const AdminPanel = lazy(() => import('./pages/admin/AdminPanel').then((module) => ({ default: module.AdminPanel })));
+const AdminTournamentDetailPage = lazy(() => import('./pages/admin/AdminTournamentDetailPage'));
 
 const NotFoundPage = () => <div className="min-h-[60vh] flex flex-col items-center justify-center"><h1 className="text-4xl font-bold mb-4">404</h1><p>Page not found</p></div>;
 
 const PageTransitionWrapper = ({ children }) => {
   const location = useLocation();
-  // Disable transition for /admin layout to prevent jumping sidebar
   if (location.pathname.startsWith('/admin')) {
     return <>{children}</>;
   }
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
+  return <div key={location.pathname} className="page-transition">{children}</div>;
 };
+
+const RouteLoader = () => (
+  <div className="container mx-auto min-h-[55vh] px-4 py-10">
+    <div className="mx-auto max-w-5xl space-y-4">
+      <div className="h-8 w-40 rounded-xl bg-card/80 shimmer" />
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="h-36 rounded-2xl bg-card/70 shimmer" />
+        <div className="h-36 rounded-2xl bg-card/70 shimmer" />
+        <div className="h-36 rounded-2xl bg-card/70 shimmer" />
+      </div>
+    </div>
+  </div>
+);
+
+const LazyPage = ({ children }) => (
+  <PageTransitionWrapper>
+    <Suspense fallback={<RouteLoader />}>
+      {children}
+    </Suspense>
+  </PageTransitionWrapper>
+);
 
 const ProfileSetupGate = ({ children }) => {
   const { isAuthenticated, currentUser } = useAuth();
@@ -78,7 +84,7 @@ const ProfileSetupGate = ({ children }) => {
 };
 
 // Layout wrapper to conditionally show Footer
-const MainLayout = ({ children }) => {
+const MainLayout = memo(({ children }) => {
   const location = useLocation();
   const hideFooter = location.pathname.startsWith('/admin');
   const hideMobileNav = location.pathname.startsWith('/admin');
@@ -94,47 +100,47 @@ const MainLayout = ({ children }) => {
       {!hideMobileNav && <MobileBottomNav />}
     </>
   );
-};
+});
 
 const AnimatedRoutes = () => {
   return (
     <ProfileSetupGate>
     <Routes>
-      <Route path="/" element={<PageTransitionWrapper><HomePage /></PageTransitionWrapper>} />
-      <Route path="/home" element={<PageTransitionWrapper><HomePage /></PageTransitionWrapper>} />
-      <Route path="/login" element={<PageTransitionWrapper><LoginPage /></PageTransitionWrapper>} />
-      <Route path="/signup" element={<PageTransitionWrapper><SignupPage /></PageTransitionWrapper>} />
+      <Route path="/" element={<LazyPage><HomePage /></LazyPage>} />
+      <Route path="/home" element={<LazyPage><HomePage /></LazyPage>} />
+      <Route path="/login" element={<LazyPage><LoginPage /></LazyPage>} />
+      <Route path="/signup" element={<LazyPage><SignupPage /></LazyPage>} />
       <Route path="/profile-setup" element={
           <ProtectedRoute>
-              <PageTransitionWrapper><ProfileSetupPage /></PageTransitionWrapper>
+              <LazyPage><ProfileSetupPage /></LazyPage>
           </ProtectedRoute>
       } />
-      <Route path="/admin-login" element={<PageTransitionWrapper><AdminLoginPage /></PageTransitionWrapper>} />
-      <Route path="/ref/:code" element={<PageTransitionWrapper><ReferralRedirectPage /></PageTransitionWrapper>} />
+      <Route path="/admin-login" element={<LazyPage><AdminLoginPage /></LazyPage>} />
+      <Route path="/ref/:code" element={<LazyPage><ReferralRedirectPage /></LazyPage>} />
       
-      <Route path="/tournaments" element={<PageTransitionWrapper><TournamentsPage /></PageTransitionWrapper>} />
-      <Route path="/tournament/:id" element={<PageTransitionWrapper><TournamentDetailPage /></PageTransitionWrapper>} />
+      <Route path="/tournaments" element={<LazyPage><TournamentsPage /></LazyPage>} />
+      <Route path="/tournament/:id" element={<LazyPage><TournamentDetailPage /></LazyPage>} />
       <Route path="/tournament/:id/squad-lobby" element={
           <ProtectedRoute>
-              <PageTransitionWrapper><SquadLobbyPage /></PageTransitionWrapper>
+              <LazyPage><SquadLobbyPage /></LazyPage>
           </ProtectedRoute>
       } />
-      <Route path="/leaderboard" element={<PageTransitionWrapper><LeaderboardPage /></PageTransitionWrapper>} />
-      <Route path="/terms-and-conditions" element={<PageTransitionWrapper><TermsPage /></PageTransitionWrapper>} />
-      <Route path="/privacy-policy" element={<PageTransitionWrapper><PrivacyPolicyPage /></PageTransitionWrapper>} />
-      <Route path="/refund-policy" element={<PageTransitionWrapper><RefundPolicyPage /></PageTransitionWrapper>} />
-      <Route path="/fair-play-policy" element={<PageTransitionWrapper><FairPlayPolicyPage /></PageTransitionWrapper>} />
-      <Route path="/community-guidelines" element={<PageTransitionWrapper><CommunityGuidelinesPage /></PageTransitionWrapper>} />
-      <Route path="/contact-us" element={<PageTransitionWrapper><ContactPage /></PageTransitionWrapper>} />
+      <Route path="/leaderboard" element={<LazyPage><LeaderboardPage /></LazyPage>} />
+      <Route path="/terms-and-conditions" element={<LazyPage><TermsPage /></LazyPage>} />
+      <Route path="/privacy-policy" element={<LazyPage><PrivacyPolicyPage /></LazyPage>} />
+      <Route path="/refund-policy" element={<LazyPage><RefundPolicyPage /></LazyPage>} />
+      <Route path="/fair-play-policy" element={<LazyPage><FairPlayPolicyPage /></LazyPage>} />
+      <Route path="/community-guidelines" element={<LazyPage><CommunityGuidelinesPage /></LazyPage>} />
+      <Route path="/contact-us" element={<LazyPage><ContactPage /></LazyPage>} />
       <Route path="/referral" element={
           <ProtectedRoute>
-              <PageTransitionWrapper><ReferralPage /></PageTransitionWrapper>
+              <LazyPage><ReferralPage /></LazyPage>
           </ProtectedRoute>
       } />
       
       <Route path="/wallet" element={
           <ProtectedRoute>
-              <PageTransitionWrapper><WalletPage /></PageTransitionWrapper>
+              <LazyPage><WalletPage /></LazyPage>
           </ProtectedRoute>
       } />
       
@@ -146,29 +152,29 @@ const AnimatedRoutes = () => {
 
       <Route path="/profile" element={
           <ProtectedRoute>
-              <PageTransitionWrapper><UserProfilePage /></PageTransitionWrapper>
+              <LazyPage><UserProfilePage /></LazyPage>
           </ProtectedRoute>
       } />
       
       <Route path="/admin-dashboard" element={
           <ProtectedRoute requireAdmin={true}>
-              <PageTransitionWrapper><AdminDashboard /></PageTransitionWrapper>
+              <LazyPage><AdminDashboard /></LazyPage>
           </ProtectedRoute>
       } />
 
       <Route path="/admin/tournament/:id" element={
           <ProtectedRoute requireAdmin={true}>
-              <PageTransitionWrapper><AdminTournamentDetailPage /></PageTransitionWrapper>
+              <LazyPage><AdminTournamentDetailPage /></LazyPage>
           </ProtectedRoute>
       } />
 
       <Route path="/admin/*" element={
           <ProtectedRoute requireAdmin={true}>
-              <PageTransitionWrapper><AdminPanel /></PageTransitionWrapper>
+              <LazyPage><AdminPanel /></LazyPage>
           </ProtectedRoute>
       } />
       
-      <Route path="*" element={<PageTransitionWrapper><NotFoundPage /></PageTransitionWrapper>} />
+      <Route path="*" element={<LazyPage><NotFoundPage /></LazyPage>} />
     </Routes>
     </ProfileSetupGate>
   );

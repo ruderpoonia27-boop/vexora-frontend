@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import Confetti from 'react-confetti';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   CheckCircle2,
   Copy,
@@ -278,11 +277,9 @@ const ReferralPage = () => {
               {referralData.referrals.length > 0 ? referralData.referrals.map((item) => {
                 const stage = stageConfig(item);
                 return (
-                  <motion.div
+                  <div
                     key={item.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl border border-border/60 bg-background/35 p-4"
+                    className="page-transition rounded-2xl border border-border/60 bg-background/35 p-4"
                   >
                     <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-3">
@@ -303,14 +300,12 @@ const ReferralPage = () => {
                     </div>
 
                     <div className="overflow-hidden rounded-full border border-primary/15 bg-background/70">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${stage.percent}%` }}
-                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                      <div
+                        style={{ width: `${stage.percent}%`, transition: 'width 240ms ease' }}
                         className={`h-2 rounded-full bg-gradient-to-r ${stage.barClass}`}
                       />
                     </div>
-                  </motion.div>
+                  </div>
                 );
               }) : (
                 <div className="rounded-2xl border border-dashed border-border/60 bg-background/35 px-6 py-10 text-center">
@@ -323,14 +318,8 @@ const ReferralPage = () => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {showAchievement && latestAchievement ? (
-          <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            className="fixed inset-x-4 bottom-28 z-[60] mx-auto max-w-md rounded-[28px] border border-secondary/30 bg-[rgba(12,20,40,0.96)] p-5 shadow-[0_0_40px_rgba(34,197,94,0.18)] backdrop-blur-2xl"
-          >
+      {showAchievement && latestAchievement ? (
+          <div className="page-transition fixed inset-x-4 bottom-28 z-[60] mx-auto max-w-md rounded-[28px] border border-secondary/30 bg-[rgba(12,20,40,0.96)] p-5 shadow-[0_0_28px_rgba(34,197,94,0.14)] backdrop-blur-2xl">
             <div className="flex items-start gap-4">
               <div className="rounded-2xl bg-secondary/15 p-3 text-secondary">
                 <Trophy className="h-6 w-6" />
@@ -341,9 +330,8 @@ const ReferralPage = () => {
                 <p className="mt-1 text-sm text-foreground">{latestAchievement.subtitle}</p>
               </div>
             </div>
-          </motion.div>
+          </div>
         ) : null}
-      </AnimatePresence>
     </div>
   );
 };

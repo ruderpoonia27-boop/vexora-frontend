@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Trophy, Users, Zap, Search, ShieldCheck, ChevronRight, Target, Gift } from 'lucide-react';
 import CountUp from 'react-countup';
 import { Helmet } from 'react-helmet';
@@ -63,12 +62,7 @@ const HomePage = () => {
         </div>
 
         <div className="container mx-auto px-4 z-10 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="max-w-5xl mx-auto"
-          >
+          <div className="max-w-5xl mx-auto page-transition">
             <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 text-primary font-bold text-sm mb-6 tracking-wide border border-primary/20">
               {platformName.toUpperCase()} MOBILE GAMING
             </span>
@@ -93,7 +87,7 @@ const HomePage = () => {
                 View Leaderboard
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -102,24 +96,24 @@ const HomePage = () => {
       {/* Stats Section */}
       <section className="relative z-20 mb-24 container mx-auto px-4">
         <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-3xl p-8 md:p-12 shadow-2xl grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-border/50">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+          <div>
             <p className="text-muted-foreground font-medium mb-2 flex items-center justify-center gap-2"><Trophy className="w-4 h-4 text-accent" /> Tournaments</p>
             <h3 className="text-4xl md:text-5xl font-bold text-accent text-glow-accent">
               <CountUp end={totalTournamentsCount} duration={2.5} separator="," />+
             </h3>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+          </div>
+          <div>
             <p className="text-muted-foreground font-medium mb-2 flex items-center justify-center gap-2"><Users className="w-4 h-4 text-primary" /> Active Players</p>
             <h3 className="text-4xl md:text-5xl font-bold text-primary text-glow-primary">
               <CountUp end={totalUsers} duration={2.5} separator="," />+
             </h3>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.4 }}>
+          </div>
+          <div>
             <p className="text-muted-foreground font-medium mb-2 flex items-center justify-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Prize Distributed</p>
             <h3 className="text-4xl md:text-5xl font-bold text-secondary text-glow-secondary">
               ₹<CountUp end={totalPrizeDistributed} duration={2.5} separator="," />+
             </h3>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -178,12 +172,8 @@ const HomePage = () => {
             <div className="hidden lg:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-primary/10 via-primary/50 to-accent/10 -translate-y-1/2 z-0"></div>
             
             {steps.map((step, i) => (
-              <motion.div 
+              <div
                 key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
                 className="relative z-10 bg-card border border-border/50 p-8 rounded-3xl text-center hover:border-primary/50 transition-colors shadow-xl"
               >
                 <div className="w-16 h-16 mx-auto bg-background rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-border/50 text-primary box-glow-primary">
@@ -191,7 +181,7 @@ const HomePage = () => {
                 </div>
                 <h3 className="text-xl font-bold mb-3">{i + 1}. {step.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">{step.desc}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

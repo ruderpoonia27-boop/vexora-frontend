@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Gift, LogOut, Shield, User, Wallet } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
@@ -42,7 +41,7 @@ export const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-[rgba(6,10,22,0.88)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[rgba(6,10,22,0.72)]">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 text-primary transition-colors hover:text-primary/80">
-          <img src="/brand/vexora-logo.png" alt="" className="h-11 w-auto object-contain drop-shadow-[0_0_12px_rgba(0,212,255,0.45)] md:h-12" />
+          <img src="/brand/vexora-logo.png" alt="" width="160" height="64" loading="eager" decoding="async" fetchPriority="high" className="h-11 w-auto object-contain drop-shadow-[0_0_12px_rgba(0,212,255,0.45)] md:h-12" />
           <span className="text-base font-black tracking-[0.08em] text-glow-primary sm:text-xl">
             Vexora
           </span>
@@ -52,24 +51,16 @@ export const Header = () => {
           <Link to="/home" className={`text-sm font-medium transition-colors hover:text-primary ${isActive('/home') ? 'text-primary' : 'text-muted-foreground'}`}>Home</Link>
           <Link to="/tournaments" className={`text-sm font-medium transition-colors hover:text-primary ${isActive('/tournaments') ? 'text-primary' : 'text-muted-foreground'}`}>Tournaments</Link>
           <Link to="/referral" className="mx-1">
-            <motion.div
-              animate={{
-                boxShadow: [
-                  '0 0 0 rgba(59,130,246,0)',
-                  '0 0 22px rgba(59,130,246,0.2)',
-                  '0 0 30px rgba(168,85,247,0.18)'
-                ]
-              }}
-              transition={{ duration: 2.2, repeat: Infinity, repeatType: 'mirror' }}
+            <div
               className={`relative flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-black uppercase tracking-[0.18em] transition-all duration-300 ${
                 isActive('/referral')
                   ? 'border-primary/40 bg-primary text-primary-foreground'
-                  : 'border-primary/25 bg-primary/12 text-primary hover:scale-[1.03] hover:bg-primary hover:text-primary-foreground'
+                  : 'referral-nav-pill border-primary/25 bg-primary/12 text-primary hover:scale-[1.03] hover:bg-primary hover:text-primary-foreground'
               }`}
             >
               <Gift className="h-4 w-4" />
               <span>Referral</span>
-            </motion.div>
+            </div>
           </Link>
           <Link to="/leaderboard" className={`text-sm font-medium transition-colors hover:text-primary ${isActive('/leaderboard') ? 'text-primary' : 'text-muted-foreground'}`}>Leaderboard</Link>
           {isAuthenticated ? (

@@ -14,6 +14,7 @@ export const useRealtimeSubscription = (collectionName, options = {}) => {
 
   const intervalRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  const lastPayloadRef = useRef('');
   const optionsStr = JSON.stringify(options);
 
   useEffect(() => {
@@ -32,16 +33,26 @@ export const useRealtimeSubscription = (collectionName, options = {}) => {
             params.set(key, value);
           }
         });
-        const result = await apiClient.get(`/${collectionName}?${params}`);
+        if (document.visibilityState === 'hidden' && hasLoadedRef.current) {
+          return;
+        }
+
+        const result = await apiClient.get(`/${collectionName}?${params}`, { cacheTtl: 10000 });
         
         if (isMounted) {
-          setData(result.items || result);
-          setPagination({
+          const nextData = result.items || result;
+          const nextPagination = {
             page: result.page || 1,
             perPage: result.perPage || perPage,
-            totalItems: result.totalItems || (result.items || result).length,
+            totalItems: result.totalItems || nextData.length,
             totalPages: result.totalPages || 1
-          });
+          };
+          const payload = JSON.stringify({ nextData, nextPagination });
+          if (payload !== lastPayloadRef.current) {
+            lastPayloadRef.current = payload;
+            setData(nextData);
+            setPagination(nextPagination);
+          }
           setError(null);
           hasLoadedRef.current = true;
         }
@@ -55,8 +66,7 @@ export const useRealtimeSubscription = (collectionName, options = {}) => {
 
     fetchData();
 
-    // Poll for updates every 30 seconds
-    intervalRef.current = setInterval(fetchData, 30000);
+    intervalRef.current = setInterval(fetchData, 45000);
 
     return () => {
       isMounted = false;

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useSearchParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
   ArrowDownCircle,
@@ -360,11 +359,7 @@ const WalletPage = () => {
                     }`}
                   >
                     {active ? (
-                      <motion.span
-                        layoutId="wallet-active-tab"
-                        className="absolute inset-0 rounded-[18px] border border-primary/25 bg-primary/12 shadow-[0_0_22px_rgba(59,130,246,0.22),0_0_36px_rgba(168,85,247,0.14)]"
-                        transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-                      />
+                      <span className="absolute inset-0 rounded-[18px] border border-primary/25 bg-primary/12 shadow-[0_0_18px_rgba(59,130,246,0.18)]" />
                     ) : null}
                     <Icon className="relative z-10 h-4 w-4" />
                     <span className="relative z-10">{tab.label}</span>
@@ -373,16 +368,9 @@ const WalletPage = () => {
               })}
             </div>
 
-            <AnimatePresence mode="wait">
+            <div className="page-transition" key={activeTab}>
               {activeTab === 'deposit' ? (
-                <motion.div
-                  key="deposit"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.22 }}
-                  className="space-y-5"
-                >
+                <div className="space-y-5">
                   <div className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/8 p-3.5">
                     <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
                     <div>
@@ -448,6 +436,8 @@ const WalletPage = () => {
                           <img
                             src={qrCode}
                             alt="Payment QR code"
+                            loading="lazy"
+                            decoding="async"
                             className="mx-auto h-44 w-44 rounded-2xl border border-border bg-white object-contain p-2"
                           />
                         ) : (
@@ -499,16 +489,9 @@ const WalletPage = () => {
                       Submit Deposit Request
                     </button>
                   </form>
-                </motion.div>
+                </div>
               ) : activeTab === 'withdraw' ? (
-                <motion.div
-                  key="withdraw"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.22 }}
-                  className="space-y-5"
-                >
+                <div className="space-y-5">
                   <div className="flex items-start gap-3 rounded-2xl border border-accent/15 bg-accent/8 p-3.5">
                     <CreditCard className="mt-0.5 h-5 w-5 text-accent" />
                     <div>
@@ -572,16 +555,9 @@ const WalletPage = () => {
                       Submit Withdrawal Request
                     </button>
                   </form>
-                </motion.div>
+                </div>
               ) : (
-                <motion.div
-                  key="activity"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.22 }}
-                  className="space-y-4"
-                >
+                <div className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h2 className="text-lg font-bold">Recent Activity</h2>
@@ -666,9 +642,9 @@ const WalletPage = () => {
                       <p className="mt-1 text-sm text-muted-foreground">Your deposit, withdrawal, and refund updates will show up here.</p>
                     </div>
                   )}
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+            </div>
         </section>
       </div>
     </div>

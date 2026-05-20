@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const WHATSAPP_CHANNEL_URL = 'https://whatsapp.com/channel/0029Vb7fa2kK0IBoyxQitT0g';
 
@@ -23,28 +22,18 @@ const WhatsAppIcon = () => (
 
 export const FloatingWhatsAppButton = () => {
   return (
-    <motion.a
+    <a
       href={WHATSAPP_CHANNEL_URL}
       target="_blank"
       rel="noreferrer"
       aria-label="Open WhatsApp channel"
-      whileHover={{ scale: 1.08 }}
-      whileTap={{ scale: 0.94 }}
-      animate={{
-        boxShadow: [
-          '0 0 0 rgba(37,211,102,0.0)',
-          '0 0 22px rgba(37,211,102,0.34)',
-          '0 0 40px rgba(37,211,102,0.28)'
-        ]
-      }}
-      transition={{ duration: 2.2, repeat: Infinity, repeatType: 'mirror' }}
-      className="fixed bottom-[6.25rem] right-4 z-[80] flex h-14 w-14 items-center justify-center rounded-full border border-[#25D366]/35 bg-[rgba(7,18,16,0.92)] text-white shadow-[0_16px_40px_rgba(18,140,126,0.32)] transition-transform duration-300 md:bottom-6 md:right-6"
+      className="whatsapp-float fixed bottom-[6.25rem] right-4 z-[80] flex h-14 w-14 items-center justify-center rounded-full border border-[#25D366]/35 bg-[rgba(7,18,16,0.92)] text-white shadow-[0_10px_28px_rgba(18,140,126,0.28)] transition-transform duration-200 active:scale-95 md:bottom-6 md:right-6"
     >
       <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(37,211,102,0.18),transparent_62%)]" />
       <span className="relative z-10 drop-shadow-[0_0_12px_rgba(37,211,102,0.45)]">
         <WhatsAppIcon />
       </span>
-    </motion.a>
+    </a>
   );
 };
 

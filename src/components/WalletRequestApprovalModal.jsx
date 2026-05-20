@@ -75,7 +75,7 @@ const WalletRequestApprovalModal = ({ isOpen, onOpenChange, request, onSuccess }
 
           {screenshotUrl ? (
             <div className="border border-border/50 rounded-lg overflow-hidden bg-background flex justify-center p-2 h-48">
-              <img src={screenshotUrl} alt="Payment Screenshot" className="max-h-full object-contain" />
+              <img src={screenshotUrl} alt="Payment Screenshot" loading="lazy" decoding="async" className="max-h-full object-contain" />
             </div>
           ) : (
             <div className="h-24 bg-background rounded-lg border border-border flex items-center justify-center text-muted-foreground text-sm">

@@ -25,7 +25,11 @@ const NotificationCenter = () => {
 
     if (showLoading) setLoading(true);
     try {
-      const result = await apiClient.get('/notifications?page=1&perPage=50');
+      if (!showLoading && document.visibilityState === 'hidden') {
+        return;
+      }
+
+      const result = await apiClient.get('/notifications?page=1&perPage=50', { cacheTtl: 12000 });
       const items = result.items || [];
       const freshWinner = items.find((notification) => (
         announceNew
@@ -60,7 +64,7 @@ const NotificationCenter = () => {
     const handleFocus = () => fetchNotifications({ announceNew: true, showLoading: false });
     const intervalId = window.setInterval(() => {
       fetchNotifications({ announceNew: true, showLoading: false });
-    }, 15000);
+    }, 30000);
 
     window.addEventListener('focus', handleFocus);
     return () => {

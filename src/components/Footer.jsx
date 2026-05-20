@@ -67,7 +67,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]">
           <div>
             <Link to="/" className="mb-4 flex items-center gap-2 text-primary">
-              <img src="/brand/vexora-logo.png" alt={platformName} className="h-16 w-auto object-contain drop-shadow-[0_0_14px_rgba(0,212,255,0.35)]" />
+              <img src="/brand/vexora-logo.png" alt={platformName} width="160" height="64" loading="lazy" decoding="async" className="h-16 w-auto object-contain drop-shadow-[0_0_14px_rgba(0,212,255,0.35)]" />
               <span className="sr-only">{platformName}</span>
             </Link>
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">

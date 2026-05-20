@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Copy, Crown, Loader2, RotateCcw, Shield, Trophy, Users, Zap } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { calculatePrizeBreakdown } from '@/lib/prizeUtils';
 
 const TournamentCard = ({ tournament, onJoin }) => {
@@ -9,7 +8,7 @@ const TournamentCard = ({ tournament, onJoin }) => {
   const [isJoining, setIsJoining] = useState(false);
   const [now, setNow] = useState(Date.now());
 
-  const prizeBreakdown = calculatePrizeBreakdown(tournament);
+  const prizeBreakdown = useMemo(() => calculatePrizeBreakdown(tournament), [tournament]);
   const currentPrizePool = prizeBreakdown.prizePool;
   const totalSlots = tournament.total_slots || 0;
   const joinedCount = tournament.joined_count || 0;
@@ -50,8 +49,26 @@ const TournamentCard = ({ tournament, onJoin }) => {
 
   useEffect(() => {
     if (!startTime || isCompleted || isDismissed) return undefined;
-    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(intervalId);
+    const startTimestamp = new Date(startTime).getTime();
+    if (Number.isNaN(startTimestamp)) return undefined;
+
+    let intervalId = null;
+    const scheduleTicker = () => {
+      setNow(Date.now());
+      intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    };
+
+    const diff = startTimestamp - Date.now();
+    if (diff <= 60000) {
+      scheduleTicker();
+      return () => window.clearInterval(intervalId);
+    }
+
+    const timeoutId = window.setTimeout(scheduleTicker, Math.min(diff - 60000, 2147483647));
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (intervalId) window.clearInterval(intervalId);
+    };
   }, [isCompleted, isDismissed, startTime]);
 
   const handleJoinClick = async (event) => {
@@ -82,10 +99,7 @@ const TournamentCard = ({ tournament, onJoin }) => {
 
   return (
     <Link to={`/tournament/${tournament.id}`} className="block h-full">
-      <motion.div
-        whileHover={{ y: -5 }}
-        className="bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/50 transition-all box-glow-primary group h-full flex flex-col"
-      >
+      <div className="tournament-card bg-card border border-border/50 rounded-2xl overflow-hidden hover:border-primary/50 transition-all box-glow-primary group h-full flex flex-col">
         <div className="p-6 flex-grow flex flex-col">
           <div className="flex justify-between items-start gap-3 mb-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -144,38 +158,26 @@ const TournamentCard = ({ tournament, onJoin }) => {
                 <p className="font-bold text-foreground">Rs.{tournament.entry_fee}</p>
               </div>
             ) : null}
-            <motion.div
-              animate={{ boxShadow: ['0 0 0 rgba(34,211,238,0)', '0 0 22px rgba(34,211,238,0.18)', '0 0 0 rgba(34,211,238,0)'] }}
-              transition={{ duration: 2.4, repeat: Infinity }}
-              className="bg-background p-3 rounded-lg border border-accent/30"
-            >
+            <div className="bg-background p-3 rounded-lg border border-accent/30 soft-neon-tile">
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                 <Trophy className="w-3 h-3" /> Prize Pool
               </p>
               <p className="font-bold text-accent text-glow-accent">Rs.{currentPrizePool}</p>
-            </motion.div>
+            </div>
             {isSquadMatch ? (
-              <motion.div
-                animate={{ boxShadow: ['0 0 0 rgba(168,85,247,0)', '0 0 22px rgba(168,85,247,0.18)', '0 0 0 rgba(168,85,247,0)'] }}
-                transition={{ duration: 2.6, repeat: Infinity }}
-                className="bg-background p-3 rounded-lg border border-primary/30"
-              >
+              <div className="bg-background p-3 rounded-lg border border-primary/30 soft-neon-tile">
                 <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                   <Crown className="w-3 h-3" /> First Prize
                 </p>
                 <p className="font-bold text-primary text-glow-primary">Rs.{prizeBreakdown.firstPrize}</p>
                 <p className="mt-1 text-[10px] text-muted-foreground">{prizeBreakdown.firstPrizePercentage}% payout</p>
-              </motion.div>
+              </div>
             ) : (
               <>
-                <motion.div
-                  animate={{ boxShadow: ['0 0 0 rgba(250,204,21,0)', '0 0 20px rgba(250,204,21,0.18)', '0 0 0 rgba(250,204,21,0)'] }}
-                  transition={{ duration: 2.5, repeat: Infinity }}
-                  className="bg-background p-3 rounded-lg border border-yellow-400/30"
-                >
+                <div className="bg-background p-3 rounded-lg border border-yellow-400/30 soft-neon-tile">
                   <p className="text-xs text-muted-foreground mb-1">#1 Prize</p>
                   <p className="font-bold text-yellow-300">Rs.{prizeBreakdown.firstPrize}</p>
-                </motion.div>
+                </div>
                 <div className="bg-background p-3 rounded-lg border border-slate-300/20">
                   <p className="text-xs text-muted-foreground mb-1">#2 Prize</p>
                   <p className="font-bold text-slate-200">Rs.{prizeBreakdown.secondPrize}</p>
@@ -283,10 +285,8 @@ const TournamentCard = ({ tournament, onJoin }) => {
               </span>
             </div>
             <div className="w-full bg-background rounded-full h-2 mb-6 overflow-hidden border border-border/30">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${fillPercentage}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
+              <div
+                style={{ transform: `scaleX(${fillPercentage / 100})` }}
                 className={`h-full rounded-full ${fillPercentage > 90 ? 'bg-destructive' : 'bg-primary'}`}
               />
             </div>
@@ -348,9 +348,9 @@ const TournamentCard = ({ tournament, onJoin }) => {
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     </Link>
   );
 };
 
-export default TournamentCard;
+export default memo(TournamentCard);

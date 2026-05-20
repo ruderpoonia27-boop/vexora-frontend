@@ -156,7 +156,7 @@ const PaymentSettingsPanel = () => {
             <div className="border-2 border-dashed border-border rounded-xl p-4 text-center relative hover:bg-muted/20 transition-colors">
               {qrCodePreview ? (
                 <div className="relative inline-block">
-                  <img src={qrCodePreview} alt="QR Preview" className="max-h-32 rounded-lg mx-auto" />
+                  <img src={qrCodePreview} alt="QR Preview" loading="lazy" decoding="async" className="max-h-32 rounded-lg mx-auto" />
                   <button 
                     type="button" 
                     onClick={clearFile}

@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '@/App';
 import '@/index.css';
-import { cleanupServiceWorker } from '@/lib/pwa';
+import { cleanupServiceWorker } from '@/lib/serviceWorkerCleanup';
 
 cleanupServiceWorker();
 

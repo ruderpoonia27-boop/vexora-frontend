@@ -24,13 +24,6 @@ body {
   touch-action: manipulation;
 }
 
-@media (display-mode: standalone) {
-  body {
-    overscroll-behavior-y: contain;
-    user-select: none;
-  }
-}
-
 button,
 a {
   -webkit-tap-highlight-color: transparent;
@@ -134,8 +127,7 @@ a,
   }
 
   .page-transition {
-    animation: pageEnter 170ms ease-out both;
-    transform: translateZ(0);
+    transform: none;
   }
 
   .content-auto {
@@ -166,7 +158,6 @@ a,
   }
 
   .announcement-card {
-    animation: pageEnter 180ms ease-out both;
     transform: translateZ(0);
   }
 
@@ -194,17 +185,6 @@ a,
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
-  }
-
-  @keyframes pageEnter {
-    from {
-      opacity: 0;
-      transform: translate3d(0, 8px, 0);
-    }
-    to {
-      opacity: 1;
-      transform: translate3d(0, 0, 0);
-    }
   }
 
   @keyframes marquee {

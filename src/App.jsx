@@ -42,7 +42,7 @@ const PageTransitionWrapper = ({ children }) => {
   if (location.pathname.startsWith('/admin')) {
     return <>{children}</>;
   }
-  return <div key={location.pathname} className="page-transition">{children}</div>;
+  return <div key={location.pathname}>{children}</div>;
 };
 
 const RouteLoader = () => (

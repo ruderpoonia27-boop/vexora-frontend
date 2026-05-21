@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Download, FileText, Mail, MessageCircle, ShieldCheck } from 'lucide-react';
+import { FileText, Mail, MessageCircle, ShieldCheck } from 'lucide-react';
 import { COMPANY_NAME, PLATFORM_NAME, SUPPORT_EMAIL, SUPPORT_WHATSAPP } from '@/data/legalContent';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
-import { isStandaloneMode } from '@/lib/pwa';
 
 const policyLinks = [
   { to: '/terms-and-conditions', label: 'Terms & Conditions' },
@@ -16,50 +15,9 @@ const policyLinks = [
 
 export const Footer = () => {
   const { settings } = useSettings();
-  const [installPrompt, setInstallPrompt] = useState(null);
-  const [isInstalledView, setIsInstalledView] = useState(() => isStandaloneMode());
-  const [showInstallTip, setShowInstallTip] = useState(false);
   const supportEmail = settings?.contact_email || settings?.contactEmail || SUPPORT_EMAIL;
   const platformName = getPlatformName(settings);
   const companyName = COMPANY_NAME.replaceAll(PLATFORM_NAME, platformName);
-  const showDownloadButton = !isInstalledView;
-
-  useEffect(() => {
-    if (isStandaloneMode()) {
-      setIsInstalledView(true);
-      return undefined;
-    }
-
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault();
-      setInstallPrompt(event);
-    };
-
-    const handleInstalled = () => {
-      setInstallPrompt(null);
-      setIsInstalledView(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleInstalled);
-    };
-  }, []);
-
-  const installApp = async () => {
-    if (!installPrompt) {
-      setShowInstallTip(true);
-      return;
-    }
-
-    installPrompt.prompt();
-    await installPrompt.userChoice;
-    setInstallPrompt(null);
-    setShowInstallTip(false);
-  };
 
   return (
     <footer className="mt-auto border-t border-border/50 bg-card/30">
@@ -73,23 +31,6 @@ export const Footer = () => {
             <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
               Competitive mobile esports tournaments, wallet-based entries, referral rewards, and admin-reviewed payouts in one premium arena.
             </p>
-            {showDownloadButton && (
-              <div className="mt-5">
-                <button
-                  type="button"
-                  onClick={installApp}
-                  className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground shadow-[0_0_22px_rgba(0,212,255,0.18)] transition-colors hover:bg-primary/90"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Download App</span>
-                </button>
-                {showInstallTip && (
-                  <p className="mt-2 max-w-sm text-xs text-muted-foreground">
-                    If the install prompt does not open, use your browser menu to add this app.
-                  </p>
-                )}
-              </div>
-            )}
             <div className="mt-5 rounded-2xl border border-primary/15 bg-primary/8 p-4 text-sm text-muted-foreground">
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" />

@@ -11,8 +11,6 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 import FloatingWhatsAppButton from './components/FloatingWhatsAppButton';
-import PwaInstallPrompt from './components/PwaInstallPrompt';
-import PwaStartupScreen from './components/PwaStartupScreen';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -188,14 +186,12 @@ function App() {
                     <Router>
                         <ScrollToTop />
                         <div className="flex min-h-screen flex-col bg-background text-foreground">
-                            <PwaStartupScreen />
                             <Header />
                             <MainLayout>
                                 <AnimatedRoutes />
                             </MainLayout>
                             <FloatingWhatsAppButton />
                         </div>
-                        <PwaInstallPrompt />
                         <Toaster />
                     </Router>
                 </AdminAuthProvider>

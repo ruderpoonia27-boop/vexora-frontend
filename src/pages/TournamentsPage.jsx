@@ -266,7 +266,7 @@ const TournamentsPage = () => {
                     className="w-full bg-input border border-border/50 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
                   >
                     <option value="-created">Newest First</option>
-                    <option value="-prize_pool">Prize Pool (High to Low)</option>
+                    <option value="-prize_pool">Total Prize Pool (High to Low)</option>
                     <option value="-joined_count">Most Joined</option>
                     <option value="entry_fee">Entry Fee (Low to High)</option>
                   </select>

@@ -3,9 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Trophy, Zap, Shield, Loader2, CalendarClock, Copy, Check, Clock, Crown, RotateCcw, Users, XCircle, Gift } from 'lucide-react';
+import { Trophy, Zap, Shield, Loader2, CalendarClock, Copy, Check, Clock, Crown, Users, Gift } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
-import { calculatePrizeBreakdown } from '@/lib/prizeUtils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import GameAvatar from '@/components/GameAvatar';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
@@ -29,6 +28,17 @@ const getUserId = (user) => {
   if (typeof user === 'string') return user;
   return String(user?._id || user?.id || user);
 };
+
+const getDisplayPrizePool = (tournament) => Number(
+  tournament?.public_prize_pool
+  ?? tournament?.publicPrizePool
+  ?? tournament?.total_prize_pool
+  ?? tournament?.totalPrizePool
+  ?? tournament?.prizePool
+  ?? tournament?.base_prize
+  ?? tournament?.basePrize
+  ?? 0
+);
 
 const TournamentDetailPage = () => {
   const { id } = useParams();
@@ -132,10 +142,8 @@ const TournamentDetailPage = () => {
   const joinedCount = tournament?.joined_count || tournament?.currentPlayers?.length || 0;
   const totalSlots = tournament?.total_slots || tournament?.totalSlots || 0;
   const entryFee = tournament?.entry_fee || tournament?.entryFee || 0;
-  const prizeBreakdown = calculatePrizeBreakdown(tournament);
-  const currentPrizePool = prizeBreakdown.prizePool;
+  const currentPrizePool = getDisplayPrizePool(tournament);
   const isFull = joinedCount >= totalSlots;
-  const fillPercentage = totalSlots > 0 ? Math.min(100, (joinedCount / totalSlots) * 100) : 0;
   const isJoinable = tournament?.status === 'active';
   const isDismissed = tournament?.status === 'dismissed';
   const roomId = tournament?.room_id || tournament?.roomId || '';
@@ -152,6 +160,14 @@ const TournamentDetailPage = () => {
       ?? 0
     )
   );
+  const rules = String(tournament?.description || '').trim();
+  const ruleItems = rules
+    ? rules.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
+    : [
+        'Join with accurate in-game name and UID before the match begins.',
+        'Room ID and password are shared only with joined players when access is enabled.',
+        'Follow fair-play rules. Any suspicious activity can lead to removal from the match.'
+      ];
 
   const participantProfilesByUserId = useMemo(() => {
     const entries = (tournament?.participant_profiles || []).map((profile) => [
@@ -369,138 +385,40 @@ const TournamentDetailPage = () => {
       <div className="container mx-auto px-4 max-w-5xl">
         <div className="bg-card border border-border/50 rounded-3xl overflow-hidden shadow-2xl">
           <div className="p-8 md:p-12 border-b border-border/50 bg-gradient-to-b from-primary/5 to-transparent">
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-              <span className="px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider bg-primary/10 text-primary">
-                {tournament.game_type}
-              </span>
-              <span className="px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider bg-background/70 border border-border/50">
-                {matchType}
-              </span>
-              <div className={`px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider ${
-                tournament.status === 'active' ? 'bg-secondary/20 text-secondary' :
-                tournament.status === 'completed' ? 'bg-accent/20 text-accent' :
-                'bg-muted text-muted-foreground'
-              }`}>
-                {tournament.status}
-              </div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-8">{tournament.title}</h1>
+
+            <div className="mb-6 rounded-3xl border border-primary/30 bg-background/50 p-7 text-center box-glow-primary">
+              <p className="mb-3 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-primary">
+                <Trophy className="h-5 w-5" /> Prize Pool
+              </p>
+              <p className="text-5xl font-black text-primary text-glow-primary md:text-6xl">Rs.{currentPrizePool}</p>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{tournament.title}</h1>
-
-            <div className="flex flex-wrap items-center gap-3 mb-8">
-              <div className="flex items-center gap-2 text-muted-foreground text-lg bg-background/50 border border-border/50 px-4 py-2 rounded-lg">
-                <CalendarClock className="w-5 h-5 text-accent" />
-                <span>Starts: <strong className="text-foreground">{formatDateTime(tournament.startTime)}</strong></span>
-              </div>
-              {matchType === 'squad' ? (
-                <div className="flex items-center gap-2 text-muted-foreground text-lg bg-background/50 border border-border/50 px-4 py-2 rounded-lg">
-                  <Users className="w-5 h-5 text-primary" />
-                  <span>{tournament.squad_size} players per squad</span>
-                </div>
-              ) : null}
-            </div>
-
-            <div className={`grid grid-cols-1 gap-6 ${matchType === 'squad' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
-              <div className="bg-background/50 p-6 rounded-2xl border border-border/50 text-center">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="bg-background/50 p-5 rounded-2xl border border-border/50 text-center">
                 <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><Zap className="w-4 h-4" /> Entry Fee</p>
-                <p className="text-3xl font-bold">Rs.{entryFee}</p>
+                <p className="text-2xl font-bold">Rs.{entryFee}</p>
               </div>
-              <div className="bg-background/50 p-6 rounded-2xl border border-primary/30 text-center box-glow-primary">
-                <p className="text-primary mb-2 flex items-center justify-center gap-2"><Trophy className="w-4 h-4" /> Prize Pool</p>
-                <p className="text-4xl md:text-5xl font-bold text-glow-primary text-primary">Rs.{currentPrizePool}</p>
+              <div className="bg-background/50 p-5 rounded-2xl border border-accent/30 text-center soft-neon-tile">
+                <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><CalendarClock className="w-4 h-4 text-accent" /> Match Time</p>
+                <p className="text-xl font-bold text-foreground">{formatDateTime(tournament.startTime)}</p>
               </div>
-              {matchType === 'squad' ? (
-                <>
-                  <div className="bg-background/50 p-6 rounded-2xl border border-accent/30 text-center soft-neon-tile">
-                    <p className="text-accent mb-2 flex items-center justify-center gap-2"><Crown className="w-4 h-4" /> First Prize</p>
-                    <p className="text-3xl font-bold text-accent text-glow-accent">Rs.{prizeBreakdown.firstPrize}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{prizeBreakdown.firstPrizePercentage}% of prize pool</p>
-                  </div>
-                  <div className="bg-background/50 p-6 rounded-2xl border border-border/50 text-center">
-                <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><Users className="w-4 h-4" /> Squad Size</p>
-                    <p className="text-3xl font-bold">{prizeBreakdown.squadSize}</p>
-                  </div>
-                </>
-              ) : null}
+              <div className="bg-background/50 p-5 rounded-2xl border border-border/50 text-center">
+                <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><Users className="w-4 h-4" /> Total Players</p>
+                <p className="text-2xl font-bold">{joinedCount}/{totalSlots}</p>
+              </div>
             </div>
-            {matchType === 'solo' ? (
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-accent/30 bg-accent/10 p-4 text-center">
-                  <p className="text-xs text-muted-foreground">Reward Pool</p>
-                  <p className="text-2xl font-bold text-accent">Rs.{prizeBreakdown.rewardPool}</p>
-                  <p className="text-xs text-muted-foreground">50% of collection</p>
-                </div>
-                <div className="rounded-2xl border border-yellow-400/30 bg-background/50 p-4 text-center">
-                  <p className="text-xs text-muted-foreground">#1 Prize ({prizeBreakdown.soloFirstPercentage}%)</p>
-                  <p className="text-2xl font-bold text-yellow-300">Rs.{prizeBreakdown.firstPrize}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-300/20 bg-background/50 p-4 text-center">
-                  <p className="text-xs text-muted-foreground">#2 Prize ({prizeBreakdown.soloSecondPercentage}%)</p>
-                  <p className="text-2xl font-bold text-slate-200">Rs.{prizeBreakdown.secondPrize}</p>
-                </div>
-                <div className="rounded-2xl border border-orange-400/25 bg-background/50 p-4 text-center">
-                  <p className="text-xs text-muted-foreground">#3 Prize ({prizeBreakdown.soloThirdPercentage}%)</p>
-                  <p className="text-2xl font-bold text-orange-300">Rs.{prizeBreakdown.thirdPrize}</p>
-                </div>
-              </div>
-            ) : null}
           </div>
 
           <div className="p-8 md:p-12 space-y-8">
-            <div>
-              <div className="flex justify-between items-end mb-4">
-                <div>
-                  <h3 className="text-xl font-bold mb-1">Registration Status</h3>
-                  <p className="text-muted-foreground text-sm">{joinedCount} of {totalSlots} players joined</p>
-                </div>
-                <span className="text-2xl font-bold text-secondary">{Math.round(fillPercentage)}%</span>
-              </div>
-              <div className="w-full bg-background rounded-full h-4 overflow-hidden border border-border/50">
-                <div className={`h-full rounded-full transition-all duration-1000 ${fillPercentage > 90 ? 'bg-destructive' : 'bg-secondary'}`} style={{ width: `${fillPercentage}%` }} />
+            <div className="rounded-2xl border border-border/50 bg-background/50 p-6">
+              <h2 className="mb-4 text-xl font-bold">Rules</h2>
+              <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                {ruleItems.map((rule, index) => (
+                  <p key={`${rule}-${index}`}>{rule}</p>
+                ))}
               </div>
             </div>
-
-            {tournament.winner ? (
-              <div className="bg-secondary/10 border border-secondary/30 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Crown className="w-5 h-5 text-secondary" />
-                  <h3 className="text-xl font-bold text-secondary">Winner</h3>
-                </div>
-                {matchType === 'squad' && tournament.winnerSquadName ? (
-                  <p className="font-semibold">{tournament.winnerSquadName}</p>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <GameAvatar avatarId={tournament.winner.avatarId || tournament.winner.avatar_id} name={tournament.winner.name || tournament.winner.email} size="sm" className="rounded-xl" />
-                    <p className="font-semibold">{tournament.winner.name || tournament.winner.email}</p>
-                  </div>
-                )}
-                <p className="text-sm text-muted-foreground">First Prize: Rs.{tournament.winner_prize || 0}</p>
-                {matchType === 'squad' ? (
-                  <p className="text-sm text-muted-foreground">Reward per member: Rs.{tournament.rewardPerMember || tournament.reward_per_member || 0}</p>
-                ) : null}
-                <p className="text-sm text-muted-foreground">Declared at: {formatDateTime(tournament.winner_declared_at)}</p>
-              </div>
-            ) : null}
-
-            {isDismissed ? (
-              <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <XCircle className="w-5 h-5 text-destructive" />
-                  <h3 className="text-xl font-bold text-destructive">Match Dismissed</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {refundProcessed
-                    ? `Your entry amount of Rs.${entryFee} has been refunded to joined players.`
-                    : 'This match was dismissed by the admin before completion.'}
-                </p>
-                {refundProcessed ? (
-                  <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                    <RotateCcw className="w-4 h-4" />
-                    Refunded at {formatDateTime(tournament.refunded_at)}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
 
             {hasJoined ? (
               <div className="bg-accent/10 border border-accent/30 rounded-2xl p-8 text-center box-glow-accent space-y-6">

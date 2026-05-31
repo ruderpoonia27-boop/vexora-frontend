@@ -117,6 +117,7 @@ export const AdminTournaments = () => {
           {filteredTournaments.map((tournament) => {
             const prizeBreakdown = calculatePrizeBreakdown(tournament);
             const squadMatch = isSquadTournament(tournament);
+            const freeEntry = (tournament.entry_type || tournament.entryType) === 'free' || Number(tournament.entry_fee || 0) === 0;
             return (
             <div key={tournament._id || tournament.id} className="admin-glass-panel rounded-2xl p-5 space-y-5">
               <div className="flex items-start justify-between gap-4">
@@ -144,7 +145,11 @@ export const AdminTournaments = () => {
               <div className={`grid gap-3 text-sm ${squadMatch ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-3'}`}>
                 <div className="bg-background/40 border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Entry</p>
-                  <p className="font-bold">Rs.{tournament.entry_fee}</p>
+                  {freeEntry ? (
+                    <p className="inline-flex rounded-full border border-secondary/30 bg-secondary/10 px-2 py-0.5 text-xs font-black text-secondary">FREE</p>
+                  ) : (
+                    <p className="font-bold">Rs.{tournament.entry_fee}</p>
+                  )}
                 </div>
                 <div className="bg-background/40 border border-border rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">Prize Pool</p>

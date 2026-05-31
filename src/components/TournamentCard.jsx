@@ -26,6 +26,9 @@ const TournamentCard = ({ tournament, onJoin }) => {
   const [now, setNow] = useState(Date.now());
 
   const currentPrizePool = useMemo(() => getDisplayPrizePool(tournament), [tournament]);
+  const entryType = tournament.entry_type || tournament.entryType || (Number(tournament.entry_fee || 0) > 0 ? 'paid' : 'free');
+  const isFreeEntry = entryType === 'free';
+  const prizeNote = tournament.prize_display_note || tournament.prizeDisplayNote || '';
   const totalSlots = tournament.total_slots || 0;
   const joinedCount = tournament.joined_count || 0;
   const isFull = joinedCount >= totalSlots;
@@ -127,11 +130,20 @@ const TournamentCard = ({ tournament, onJoin }) => {
             ) : null}
           </div>
 
+          <div className="mb-5">
+            <h3 className="text-xl font-black leading-tight text-foreground">{tournament.title}</h3>
+          </div>
+
           <div className="mb-5 rounded-2xl border border-accent/30 bg-accent/5 p-5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <p className="mb-2 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
               <Trophy className="h-4 w-4" /> Prize Pool
             </p>
             <p className="text-4xl font-black text-accent text-glow-accent">Rs.{currentPrizePool}</p>
+            {prizeNote ? (
+              <p className="mt-2 inline-flex rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                {prizeNote}
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-3 mb-5 sm:grid-cols-2">
@@ -145,7 +157,11 @@ const TournamentCard = ({ tournament, onJoin }) => {
               <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                 <Zap className="w-3 h-3 text-secondary" /> Entry Fee
               </p>
-              <p className="font-semibold text-secondary">Rs.{tournament.entry_fee}</p>
+              {isFreeEntry ? (
+                <p className="inline-flex rounded-full border border-secondary/30 bg-secondary/10 px-2.5 py-1 text-xs font-black text-secondary">FREE</p>
+              ) : (
+                <p className="font-semibold text-secondary">Rs.{tournament.entry_fee}</p>
+              )}
             </div>
           </div>
 

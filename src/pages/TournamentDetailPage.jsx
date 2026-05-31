@@ -142,6 +142,9 @@ const TournamentDetailPage = () => {
   const joinedCount = tournament?.joined_count || tournament?.currentPlayers?.length || 0;
   const totalSlots = tournament?.total_slots || tournament?.totalSlots || 0;
   const entryFee = tournament?.entry_fee || tournament?.entryFee || 0;
+  const entryType = tournament?.entry_type || tournament?.entryType || (Number(entryFee) > 0 ? 'paid' : 'free');
+  const isFreeEntry = entryType === 'free';
+  const prizeNote = tournament?.prize_display_note || tournament?.prizeDisplayNote || '';
   const squadSize = Number(tournament?.squad_size || tournament?.squadSize || 4);
   const squadEntryFee = Number(tournament?.squad_entry_fee || tournament?.squadEntryFee || entryFee * squadSize);
   const currentPrizePool = getDisplayPrizePool(tournament);
@@ -225,7 +228,7 @@ const TournamentDetailPage = () => {
   };
 
   const handleSoloJoin = async (details) => {
-    if (details.joinMethod !== 'free_entry' && (currentUser?.walletBalance || 0) < entryFee) {
+    if (!isFreeEntry && details.joinMethod !== 'free_entry' && (currentUser?.walletBalance || 0) < entryFee) {
       toast({ title: 'Insufficient Balance', description: 'Please add money to your wallet to join.', variant: 'destructive' });
       navigate('/wallet');
       return false;
@@ -251,7 +254,7 @@ const TournamentDetailPage = () => {
   };
 
   const handleCreateSquad = async (details) => {
-    if ((currentUser?.walletBalance || 0) < squadEntryFee) {
+    if (!isFreeEntry && (currentUser?.walletBalance || 0) < squadEntryFee) {
       toast({ title: 'Insufficient Balance', description: `Please add Rs.${squadEntryFee} to create this squad.`, variant: 'destructive' });
       navigate('/wallet');
       return false;
@@ -264,7 +267,7 @@ const TournamentDetailPage = () => {
       await refreshAfterJoin();
       toast({
         title: 'Squad created',
-        description: `Captain payment of Rs.${squadEntryFee} is complete. Share the invite code from the lobby.`
+        description: isFreeEntry ? 'Free squad created. Share the invite code from the lobby.' : `Captain payment of Rs.${squadEntryFee} is complete. Share the invite code from the lobby.`
       });
       navigate(`/tournament/${id}/squad-lobby`);
       return true;
@@ -386,14 +389,23 @@ const TournamentDetailPage = () => {
               <p className="mb-3 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-primary">
                 <Trophy className="h-5 w-5" /> Prize Pool
               </p>
-              <p className="text-5xl font-black text-primary text-glow-primary md:text-6xl">Rs.{currentPrizePool}</p>
+                <p className="text-5xl font-black text-primary text-glow-primary md:text-6xl">Rs.{currentPrizePool}</p>
+                {prizeNote ? (
+                  <p className="mt-4 inline-flex rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-bold text-accent">
+                    {prizeNote}
+                  </p>
+                ) : null}
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="bg-background/50 p-5 rounded-2xl border border-border/50 text-center">
                 <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><Zap className="w-4 h-4" /> Entry Fee</p>
-                <p className="text-2xl font-bold">Rs.{entryFee}</p>
-                {matchType === 'squad' ? <p className="mt-1 text-xs text-muted-foreground">Captain total: Rs.{squadEntryFee}</p> : null}
+                {isFreeEntry ? (
+                  <p className="inline-flex rounded-full border border-secondary/30 bg-secondary/10 px-3 py-1 text-sm font-black text-secondary">FREE</p>
+                ) : (
+                  <p className="text-2xl font-bold">Rs.{entryFee}</p>
+                )}
+                {matchType === 'squad' && !isFreeEntry ? <p className="mt-1 text-xs text-muted-foreground">Captain total: Rs.{squadEntryFee}</p> : null}
               </div>
               <div className="bg-background/50 p-5 rounded-2xl border border-accent/30 text-center soft-neon-tile">
                 <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><CalendarClock className="w-4 h-4 text-accent" /> Match Time</p>
@@ -535,7 +547,7 @@ const TournamentDetailPage = () => {
                     : 'bg-primary text-primary-foreground hover:bg-primary/90 box-glow-primary'
                 }`}
               >
-                {isJoining ? <Loader2 className="w-6 h-6 animate-spin" /> : isFull ? 'Tournament Full' : !isJoinable ? `Tournament ${tournament.status}` : `Join Tournament - Rs.${entryFee}`}
+                {isJoining ? <Loader2 className="w-6 h-6 animate-spin" /> : isFull ? 'Tournament Full' : !isJoinable ? `Tournament ${tournament.status}` : `Join Tournament - ${isFreeEntry ? 'FREE' : `Rs.${entryFee}`}`}
               </button>
             ) : (
               <div className="space-y-6">
@@ -558,7 +570,7 @@ const TournamentDetailPage = () => {
                       className="rounded-2xl border border-primary/30 bg-primary/10 p-5 text-left transition-all hover:border-primary/60 hover:bg-primary/15 disabled:opacity-50"
                     >
                       <p className="text-lg font-bold text-primary">Create Squad</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Pay Rs.{squadEntryFee} once for {squadSize} players, then share the generated invite code.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">{isFreeEntry ? 'Create a free squad and share the generated invite code.' : `Pay Rs.${squadEntryFee} once for ${squadSize} players, then share the generated invite code.`}</p>
                     </button>
                     <button
                       type="button"
@@ -654,7 +666,7 @@ const TournamentDetailPage = () => {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-border bg-background/70 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Entry Fee</p>
-                <p className="mt-1 text-lg font-bold text-foreground">Rs.{joinIntent.mode === 'squad' ? (squadJoinMode === 'create' ? squadEntryFee : 0) : entryFee}</p>
+                <p className="mt-1 text-lg font-bold text-foreground">{isFreeEntry ? 'FREE' : `Rs.${joinIntent.mode === 'squad' ? (squadJoinMode === 'create' ? squadEntryFee : 0) : entryFee}`}</p>
                 {joinIntent.mode === 'squad' ? (
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {squadJoinMode === 'create' ? `${entryFee} x ${squadSize} players` : 'Member join is free'}
@@ -675,7 +687,7 @@ const TournamentDetailPage = () => {
               {joinIntent.mode === 'squad' ? (
                 <div className="rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary">
                   {squadJoinMode === 'create'
-                    ? `Captain pays Rs.${squadEntryFee} once. Teammates join free with the invite code.`
+                    ? (isFreeEntry ? 'Free squad entry. Teammates join free with the invite code.' : `Captain pays Rs.${squadEntryFee} once. Teammates join free with the invite code.`)
                     : 'No wallet deduction for members. The captain has already paid the squad entry.'}
                 </div>
               ) : freeEntriesAvailable > 0 ? (
@@ -803,7 +815,7 @@ const TournamentDetailPage = () => {
               disabled={isJoining}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {isJoining ? <Loader2 className="w-4 h-4 animate-spin" /> : joinIntent.mode === 'squad' ? (squadJoinMode === 'create' ? `Pay Rs.${squadEntryFee} and Create` : 'Join Free') : 'Confirm Join'}
+              {isJoining ? <Loader2 className="w-4 h-4 animate-spin" /> : joinIntent.mode === 'squad' ? (squadJoinMode === 'create' ? (isFreeEntry ? 'Create Free Squad' : `Pay Rs.${squadEntryFee} and Create`) : 'Join Free') : 'Confirm Join'}
             </button>
           </DialogFooter>
         </DialogContent>

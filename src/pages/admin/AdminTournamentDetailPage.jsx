@@ -26,11 +26,7 @@ const AdminTournamentDetailPage = () => {
   const [joinedUsers, setJoinedUsers] = useState([]);
   const [roomId, setRoomId] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
-  const [winnerUserId, setWinnerUserId] = useState('');
-  const [secondWinnerUserId, setSecondWinnerUserId] = useState('');
-  const [thirdWinnerUserId, setThirdWinnerUserId] = useState('');
-  const [winnerSquadId, setWinnerSquadId] = useState('');
-  const [winnerPrize, setWinnerPrize] = useState('');
+  const [winnerSelections, setWinnerSelections] = useState([]);
   const [actionLoading, setActionLoading] = useState('');
   const [editOpen, setEditOpen] = useState(false);
 
@@ -52,11 +48,13 @@ const AdminTournamentDetailPage = () => {
       setJoinedUsers(joinsData);
       setRoomId(tournamentData.room_id || '');
       setRoomPassword(tournamentData.room_password || '');
-      setWinnerUserId(tournamentData.winner?._id || '');
-      setSecondWinnerUserId(tournamentData.second_winner?._id || tournamentData.secondWinner?._id || '');
-      setThirdWinnerUserId(tournamentData.third_winner?._id || tournamentData.thirdWinner?._id || '');
-      setWinnerSquadId(tournamentData.winner_squad || tournamentData.winnerSquadId || '');
-      setWinnerPrize(String(tournamentData.winner_prize || calculatePrizeBreakdown(tournamentData).firstPrize || 0));
+      setWinnerSelections(calculatePrizeBreakdown(tournamentData).prizeEntries.map((entry, index) => ({
+        place: entry.place || index + 1,
+        label: entry.label,
+        amount: entry.amount,
+        userId: '',
+        squadId: ''
+      })));
     } catch (error) {
       toast({ title: 'Error', description: error.message || 'Failed to load tournament details.', variant: 'destructive' });
       navigate('/admin', { state: { tab: 'tournaments' } });
@@ -104,27 +102,24 @@ const AdminTournamentDetailPage = () => {
 
   const handleDeclareWinner = async () => {
     const squadMatch = isSquadTournament(tournament);
-    if (squadMatch && !winnerSquadId) {
-      return toast({ title: 'Missing Winner Info', description: 'Select the winning squad.', variant: 'destructive' });
+    const payableSelections = winnerSelections.filter((entry) => Number(entry.amount || 0) > 0);
+    const selectedIds = payableSelections.map((entry) => squadMatch ? entry.squadId : entry.userId).filter(Boolean);
+    if (selectedIds.length !== payableSelections.length) {
+      return toast({ title: 'Missing Winner Info', description: `Select ${squadMatch ? 'a squad' : 'a player'} for every prize place.`, variant: 'destructive' });
     }
-    if (!squadMatch) {
-      if (!winnerUserId || !secondWinnerUserId || !thirdWinnerUserId) {
-        return toast({ title: 'Missing Winner Info', description: 'Select 1st, 2nd, and 3rd place players.', variant: 'destructive' });
-      }
-      if (new Set([winnerUserId, secondWinnerUserId, thirdWinnerUserId]).size !== 3) {
-        return toast({ title: 'Invalid Winners', description: 'Each winning position must be a different player.', variant: 'destructive' });
-      }
+    if (new Set(selectedIds).size !== selectedIds.length) {
+      return toast({ title: 'Invalid Winners', description: `Each winning position must be a different ${squadMatch ? 'squad' : 'player'}.`, variant: 'destructive' });
     }
 
     setActionLoading('winner');
     try {
-      await apiClient.post(`/tournaments/${id}/declare-winner`, squadMatch
-        ? { squadId: winnerSquadId }
-        : {
-          firstPlaceUserId: winnerUserId,
-          secondPlaceUserId: secondWinnerUserId,
-          thirdPlaceUserId: thirdWinnerUserId
-        });
+      await apiClient.post(`/tournaments/${id}/declare-winner`, {
+        winnerEntries: payableSelections.map((entry) => ({
+          place: entry.place,
+          userId: entry.userId,
+          squadId: entry.squadId
+        }))
+      });
       toast({
         title: 'Winner Declared',
         description: squadMatch ? 'Winning squad rewards were split and credited automatically.' : 'Solo rewards were calculated and credited automatically.'
@@ -190,13 +185,7 @@ const AdminTournamentDetailPage = () => {
   const joinedUsersById = useMemo(() => new Map(joinedUsers.map((user) => [user._id || user.id, user])), [joinedUsers]);
   const prizeBreakdown = useMemo(() => calculatePrizeBreakdown(tournament), [tournament]);
   const squadMatch = isSquadTournament(tournament);
-  const selectedWinningSquad = useMemo(() => (
-    currentSquadSummary.find((squad) => (squad._id || squad.id) === winnerSquadId) || null
-  ), [currentSquadSummary, winnerSquadId]);
-  const rewardPerMemberPreview = selectedWinningSquad?.memberCount
-    ? Math.floor(prizeBreakdown.firstPrize / selectedWinningSquad.memberCount)
-    : 0;
-
+  const freeEntry = (tournament?.entry_type || tournament?.entryType) === 'free' || Number(tournament?.entry_fee || 0) === 0;
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -425,74 +414,51 @@ const AdminTournamentDetailPage = () => {
               >
                 {actionLoading === 'finish' ? 'Finishing...' : tournament.status === 'completed' ? 'Tournament Finished' : 'Finish Tournament'}
               </button>
-              {squadMatch ? (
-                <>
-                  <select
-                    value={winnerSquadId}
-                    onChange={(event) => setWinnerSquadId(event.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                  >
-                    <option value="">Select winning squad</option>
-                    {currentSquadSummary.map((squad) => (
-                      <option key={squad._id || squad.id} value={squad._id || squad.id} disabled={!squad.isFull}>
-                        {squad.name} ({squad.memberCount}/{tournament.squad_size}){squad.isFull ? '' : ' - incomplete'}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-accent/30 bg-accent/10 p-4">
-                      <p className="text-xs text-muted-foreground">First Prize</p>
-                      <p className="text-2xl font-bold text-accent">Rs.{prizeBreakdown.firstPrize}</p>
-                      <p className="text-[11px] text-muted-foreground">{prizeBreakdown.firstPrizePercentage}% payout</p>
+              <div className="space-y-3">
+                {winnerSelections.map((entry, index) => (
+                  <div key={`${entry.place}-${entry.label}`} className="rounded-2xl border border-border bg-background/35 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold">{entry.label}</span>
+                      <span className="text-muted-foreground">Rs.{entry.amount}</span>
                     </div>
-                    <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4">
-                      <p className="text-xs text-muted-foreground">Each Member Gets</p>
-                      <p className="text-2xl font-bold text-primary">Rs.{rewardPerMemberPreview}</p>
-                    </div>
+                    <select
+                      value={squadMatch ? entry.squadId : entry.userId}
+                      onChange={(event) => setWinnerSelections((current) => current.map((item, itemIndex) => (
+                        itemIndex === index
+                          ? { ...item, [squadMatch ? 'squadId' : 'userId']: event.target.value }
+                          : item
+                      )))}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                    >
+                      <option value="">{squadMatch ? 'Select squad' : 'Select player'}</option>
+                      {squadMatch ? currentSquadSummary.map((squad) => (
+                        <option key={squad._id || squad.id} value={squad._id || squad.id} disabled={!squad.isFull}>
+                          {squad.name} ({squad.memberCount}/{tournament.squad_size}){squad.isFull ? '' : ' - incomplete'}
+                        </option>
+                      )) : joinedUsers.map((user) => (
+                        <option key={user._id || user.id} value={user._id || user.id}>
+                          {user.name || user.email}
+                        </option>
+                      ))}
+                    </select>
+                    {squadMatch ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Reward splits equally among selected squad members.
+                      </p>
+                    ) : null}
                   </div>
-                </>
-              ) : (
-                <>
-                  {[
-                    { label: '1st Place', value: winnerUserId, setter: setWinnerUserId, amount: prizeBreakdown.firstPrize, percent: prizeBreakdown.soloFirstPercentage },
-                    { label: '2nd Place', value: secondWinnerUserId, setter: setSecondWinnerUserId, amount: prizeBreakdown.secondPrize, percent: prizeBreakdown.soloSecondPercentage },
-                    { label: '3rd Place', value: thirdWinnerUserId, setter: setThirdWinnerUserId, amount: prizeBreakdown.thirdPrize, percent: prizeBreakdown.soloThirdPercentage }
-                  ].map((field) => (
-                    <div key={field.label} className="rounded-2xl border border-border bg-background/35 p-3">
-                      <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-                        <span className="font-semibold">{field.label}</span>
-                        <span className="text-muted-foreground">Rs.{field.amount} ({field.percent}%)</span>
-                      </div>
-                      <select
-                        value={field.value}
-                        onChange={(event) => field.setter(event.target.value)}
-                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                      >
-                        <option value="">Select player</option>
-                        {joinedUsers.map((user) => (
-                          <option key={user._id} value={user._id}>
-                            {user.name || user.email}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3">
-                      <p className="text-xs text-muted-foreground">Reward Pool</p>
-                      <p className="text-xl font-bold text-primary">Rs.{prizeBreakdown.rewardPool}</p>
-                    </div>
-                    <div className="rounded-2xl border border-accent/30 bg-accent/10 p-3">
-                      <p className="text-xs text-muted-foreground">Platform</p>
-                      <p className="text-xl font-bold text-accent">Rs.{prizeBreakdown.platformEarnings}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border bg-background/35 p-3">
-                      <p className="text-xs text-muted-foreground">Distribution</p>
-                      <p className="text-xl font-bold">{prizeBreakdown.soloTotalPercentage}%</p>
-                    </div>
-                  </div>
-                </>
-              )}
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3">
+                  <p className="text-xs text-muted-foreground">Prize Pool</p>
+                  <p className="text-xl font-bold text-primary">Rs.{prizeBreakdown.prizePool}</p>
+                </div>
+                <div className="rounded-2xl border border-accent/30 bg-accent/10 p-3">
+                  <p className="text-xs text-muted-foreground">Distribution</p>
+                  <p className="text-xl font-bold text-accent capitalize">{prizeBreakdown.distributionType}</p>
+                </div>
+              </div>
               <button
                 onClick={handleDeclareWinner}
                 disabled={(squadMatch ? currentSquadSummary.length === 0 : joinedUsers.length === 0) || actionLoading === 'winner' || !!tournament.winner_declared_at}
@@ -536,6 +502,10 @@ const AdminTournamentDetailPage = () => {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Match Type</span>
                   <span className="font-medium capitalize">{tournament.match_type}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Entry Type</span>
+                  <span className="font-medium">{freeEntry ? 'Free Entry' : `Paid Entry - Rs.${tournament.entry_fee}`}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Player Slots</span>

@@ -142,15 +142,17 @@ const TournamentDetailPage = () => {
   const joinedCount = tournament?.joined_count || tournament?.currentPlayers?.length || 0;
   const totalSlots = tournament?.total_slots || tournament?.totalSlots || 0;
   const entryFee = tournament?.entry_fee || tournament?.entryFee || 0;
+  const squadSize = Number(tournament?.squad_size || tournament?.squadSize || 4);
+  const squadEntryFee = Number(tournament?.squad_entry_fee || tournament?.squadEntryFee || entryFee * squadSize);
   const currentPrizePool = getDisplayPrizePool(tournament);
-  const isFull = joinedCount >= totalSlots;
+  const reservedSlots = Number(tournament?.reserved_slots || tournament?.reservedSlots || joinedCount);
+  const isFull = matchType === 'squad' ? reservedSlots >= totalSlots : joinedCount >= totalSlots;
   const isJoinable = tournament?.status === 'active';
   const isDismissed = tournament?.status === 'dismissed';
   const roomId = tournament?.room_id || tournament?.roomId || '';
   const roomPassword = tournament?.room_password || tournament?.roomPassword || '';
   const roomVisibleAtStartTime = tournament?.startTime ? new Date(tournament.startTime).getTime() <= Date.now() : false;
   const refundProcessed = !!(tournament?.refund_processed || tournament?.refundProcessed);
-  const canSeeRoomDetails = Boolean(roomId) && (roomVisibleAtStartTime || tournament?.status === 'completed' || tournament?.status === 'dismissed');
   const gameUidLabel = (tournament?.game_type || tournament?.name) === 'Free Fire' ? 'Free Fire UID' : 'BGMI UID';
   const freeEntriesAvailable = Math.max(
     0,
@@ -181,14 +183,20 @@ const TournamentDetailPage = () => {
     if (!tournament?.squads || !currentUserId) return null;
     return tournament.squads.find((squad) => (squad.members || []).some((member) => getUserId(member) === currentUserId)) || null;
   }, [currentUserId, tournament]);
+  const currentSquadComplete = currentSquad
+    ? (currentSquad.isComplete || currentSquad.status === 'complete' || (currentSquad.memberCount || currentSquad.members?.length || 0) >= squadSize)
+    : false;
+  const canSeeRoomDetails = Boolean(roomId) && (matchType !== 'squad' || currentSquadComplete) && (roomVisibleAtStartTime || tournament?.status === 'completed' || tournament?.status === 'dismissed');
 
-  const currentSquadMembers = useMemo(() => {
-    if (!currentSquad) return [];
-    return (currentSquad.members || []).map((member) => {
-      const memberId = getUserId(member);
-      const profile = participantProfilesByUserId.get(memberId) || null;
-      return { member, profile, memberId };
-    });
+  const currentSquadCaptain = useMemo(() => {
+    if (!currentSquad) return null;
+    const captainId = getUserId(currentSquad.captain);
+    const captain = currentSquad.captain || (currentSquad.members || []).find((member) => getUserId(member) === captainId) || null;
+    return {
+      member: captain,
+      profile: participantProfilesByUserId.get(captainId) || null,
+      memberId: captainId
+    };
   }, [currentSquad, participantProfilesByUserId]);
 
   const hasJoined = useMemo(() => {
@@ -243,8 +251,8 @@ const TournamentDetailPage = () => {
   };
 
   const handleCreateSquad = async (details) => {
-    if (details.joinMethod !== 'free_entry' && (currentUser?.walletBalance || 0) < entryFee) {
-      toast({ title: 'Insufficient Balance', description: 'Please add money to your wallet to create and join a squad.', variant: 'destructive' });
+    if ((currentUser?.walletBalance || 0) < squadEntryFee) {
+      toast({ title: 'Insufficient Balance', description: `Please add Rs.${squadEntryFee} to create this squad.`, variant: 'destructive' });
       navigate('/wallet');
       return false;
     }
@@ -256,9 +264,7 @@ const TournamentDetailPage = () => {
       await refreshAfterJoin();
       toast({
         title: 'Squad created',
-        description: details.joinMethod === 'free_entry'
-          ? 'Your squad is ready and 1 Referral Reward Entry has been used.'
-          : 'Your squad is ready and you have joined the tournament.'
+        description: `Captain payment of Rs.${squadEntryFee} is complete. Share the invite code from the lobby.`
       });
       navigate(`/tournament/${id}/squad-lobby`);
       return true;
@@ -271,21 +277,13 @@ const TournamentDetailPage = () => {
   };
 
   const handleJoinSquadByPassword = async (details) => {
-    if (details.joinMethod !== 'free_entry' && (currentUser?.walletBalance || 0) < entryFee) {
-      toast({ title: 'Insufficient Balance', description: 'Please add money to your wallet to join a squad.', variant: 'destructive' });
-      navigate('/wallet');
-      return false;
-    }
-
     setIsJoining(true);
     try {
-      await apiClient.post(`/tournaments/${id}/squads/join-by-password`, { userId: currentUserId, ...details });
+      await apiClient.post(`/tournaments/${id}/squads/join-by-code`, { userId: currentUserId, ...details });
       await refreshAfterJoin();
       toast({
         title: 'Squad joined',
-        description: details.joinMethod === 'free_entry'
-          ? 'You joined the squad using 1 Referral Reward Entry.'
-          : 'You joined the squad successfully.'
+        description: 'You joined for free. The captain has already paid the squad entry.'
       });
       navigate(`/tournament/${id}/squad-lobby`);
       return true;
@@ -339,23 +337,20 @@ const TournamentDetailPage = () => {
           toast({ title: 'Squad name required', description: 'Enter a squad name for your squad.', variant: 'destructive' });
           return;
         }
-        if (!squadForm.squadPassword.trim()) {
-          toast({ title: 'Squad password required', description: 'Enter a squad password for your teammates.', variant: 'destructive' });
-          return;
-        }
         success = await handleCreateSquad({
           ...payload,
           squadName: squadForm.squadName.trim(),
-          squadPassword: squadForm.squadPassword.trim()
+          joinMethod: 'wallet'
         });
       } else {
         if (!squadForm.squadPassword.trim()) {
-          toast({ title: 'Squad password required', description: 'Enter the squad password shared by your leader.', variant: 'destructive' });
+          toast({ title: 'Squad code required', description: 'Enter the squad invite code shared by your captain.', variant: 'destructive' });
           return;
         }
         success = await handleJoinSquadByPassword({
           ...payload,
-          squadPassword: squadForm.squadPassword.trim()
+          squadCode: squadForm.squadPassword.trim(),
+          joinMethod: 'wallet'
         });
       }
     }
@@ -398,6 +393,7 @@ const TournamentDetailPage = () => {
               <div className="bg-background/50 p-5 rounded-2xl border border-border/50 text-center">
                 <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><Zap className="w-4 h-4" /> Entry Fee</p>
                 <p className="text-2xl font-bold">Rs.{entryFee}</p>
+                {matchType === 'squad' ? <p className="mt-1 text-xs text-muted-foreground">Captain total: Rs.{squadEntryFee}</p> : null}
               </div>
               <div className="bg-background/50 p-5 rounded-2xl border border-accent/30 text-center soft-neon-tile">
                 <p className="text-muted-foreground mb-2 flex items-center justify-center gap-2"><CalendarClock className="w-4 h-4 text-accent" /> Match Time</p>
@@ -453,36 +449,22 @@ const TournamentDetailPage = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {currentSquadMembers.map(({ member, profile, memberId }) => (
-                        <div key={memberId} className="rounded-xl border border-border/70 bg-background/60 px-3 py-3 space-y-2">
-                          <div className="flex items-center gap-3">
-                            <GameAvatar avatarId={member.avatarId || member.avatar_id} name={member.name} size="sm" className="rounded-xl" />
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-medium">{member.name || 'Unknown Player'}</p>
-                                {getUserId(currentSquad.captain) === memberId ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                                    <Crown className="h-3 w-3" /> Leader
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="text-xs text-muted-foreground">{profile?.inGameName || profile?.in_game_name || 'Game name not added yet'}</p>
+                    {currentSquadCaptain?.member ? (
+                      <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <GameAvatar avatarId={currentSquadCaptain.member.avatarId || currentSquadCaptain.member.avatar_id} name={currentSquadCaptain.member.name} size="sm" className="rounded-xl" />
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium">{currentSquadCaptain.member.name || 'Unknown Captain'}</p>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                                <Crown className="h-3 w-3" /> Captain
+                              </span>
                             </div>
-                          </div>
-                          <div className="grid gap-2 sm:grid-cols-2 text-xs">
-                            <div className="rounded-xl bg-background/70 px-3 py-2">
-                              <p className="uppercase tracking-[0.16em] text-muted-foreground">UID</p>
-                              <p className="mt-1 font-medium text-foreground break-all">{profile?.gameUid || profile?.game_uid || 'Pending'}</p>
-                            </div>
-                            <div className="rounded-xl bg-background/70 px-3 py-2">
-                              <p className="uppercase tracking-[0.16em] text-muted-foreground">Join Status</p>
-                              <p className="mt-1 font-medium text-secondary">Confirmed</p>
-                            </div>
+                            <p className="text-xs text-muted-foreground">{currentSquadCaptain.profile?.inGameName || currentSquadCaptain.profile?.in_game_name || 'Captain details saved'}</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => navigate(`/tournament/${id}/squad-lobby`)}
@@ -561,7 +543,7 @@ const TournamentDetailPage = () => {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <h3 className="text-xl font-bold">Squad Match Entry</h3>
-                      <p className="text-sm text-muted-foreground">Choose how you want to join this match. Every player pays individually, and the leader shares the squad password with teammates.</p>
+                      <p className="text-sm text-muted-foreground">Create a squad with one captain payment, or join free with your captain's invite code.</p>
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">
                       <Users className="h-3.5 w-3.5" />
@@ -576,7 +558,7 @@ const TournamentDetailPage = () => {
                       className="rounded-2xl border border-primary/30 bg-primary/10 p-5 text-left transition-all hover:border-primary/60 hover:bg-primary/15 disabled:opacity-50"
                     >
                       <p className="text-lg font-bold text-primary">Create Squad</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Become squad leader, name your team, set a unique squad password, and move straight into the squad lobby.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Pay Rs.{squadEntryFee} once for {squadSize} players, then share the generated invite code.</p>
                     </button>
                     <button
                       type="button"
@@ -587,7 +569,7 @@ const TournamentDetailPage = () => {
                       className="rounded-2xl border border-secondary/30 bg-secondary/10 p-5 text-left transition-all hover:border-secondary/60 hover:bg-secondary/15 disabled:opacity-50"
                     >
                       <p className="text-lg font-bold text-secondary">Join Existing Squad</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Enter the squad password shared by your leader, pay your own entry fee, and jump straight into the squad lobby.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Enter the invite code and join free with your own account details.</p>
                     </button>
                   </div>
                 </div>
@@ -595,7 +577,7 @@ const TournamentDetailPage = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-xl font-bold">Active Squads</h3>
-                    <p className="text-sm text-muted-foreground">Leaders can share squad passwords with teammates for secure joins.</p>
+                    <p className="text-sm text-muted-foreground">Captains share invite codes after creating squads.</p>
                   </div>
                   {tournament.squads?.length ? tournament.squads.map((squad) => {
                     const memberCount = squad.memberCount || squad.members?.length || 0;
@@ -606,7 +588,7 @@ const TournamentDetailPage = () => {
                           <div>
                             <p className="text-lg font-bold">{squad.name}</p>
                             <p className="text-sm text-muted-foreground">Captain: {squad.captain?.name || squad.captain?.email || 'Unknown'}</p>
-                            <p className="text-sm text-muted-foreground">Join with the squad password from your leader.</p>
+                            <p className="text-sm text-muted-foreground">{isSquadFull ? 'Squad Complete' : 'Join free with the captain invite code.'}</p>
                           </div>
                           <div className="text-right text-sm">
                             <p className="font-semibold text-foreground">{memberCount}/{tournament.squad_size} players</p>
@@ -614,35 +596,22 @@ const TournamentDetailPage = () => {
                           </div>
                         </div>
 
-                        <div className="grid gap-2 md:grid-cols-2">
-                          {(squad.members || []).map((member) => (
-                            <div key={member._id} className="rounded-xl border border-border/70 bg-background/60 px-3 py-3">
-                              <div className="flex items-center gap-3">
-                                <GameAvatar avatarId={member.avatarId || member.avatar_id} name={member.name} size="sm" className="rounded-xl" />
-                                <div>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="font-medium">{member.name || 'Unknown Player'}</p>
-                                    {getUserId(squad.captain) === getUserId(member) ? (
-                                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                                        <Crown className="h-3 w-3" /> Leader
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">
-                                    {participantProfilesByUserId.get(getUserId(member))?.inGameName
-                                      || participantProfilesByUserId.get(getUserId(member))?.in_game_name
-                                      || 'Game name pending'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground break-all">
-                                    {participantProfilesByUserId.get(getUserId(member))?.gameUid
-                                      || participantProfilesByUserId.get(getUserId(member))?.game_uid
-                                      || 'UID pending'}
-                                  </p>
+                        {squad.captain ? (
+                          <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <GameAvatar avatarId={squad.captain.avatarId || squad.captain.avatar_id} name={squad.captain.name} size="sm" className="rounded-xl" />
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-medium">{squad.captain.name || squad.captain.email || 'Unknown Captain'}</p>
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                                    <Crown className="h-3 w-3" /> Captain
+                                  </span>
                                 </div>
+                                <p className="text-xs text-muted-foreground">Full roster is visible to admin only.</p>
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ) : null}
 
                         <div className="flex flex-wrap items-center gap-3">
                           <button
@@ -654,7 +623,7 @@ const TournamentDetailPage = () => {
                           >
                             {isSquadFull ? 'Squad Full' : 'Join Existing Squad'}
                           </button>
-                          <p className="text-xs text-muted-foreground">Use the squad password from the leader to complete the join.</p>
+                          <p className="text-xs text-muted-foreground">Use the invite code from the captain to complete the join.</p>
                         </div>
                       </div>
                     );
@@ -676,7 +645,7 @@ const TournamentDetailPage = () => {
             <DialogTitle>{joinIntent.mode === 'squad' ? 'Join Squad Match' : 'Enter Match Details'}</DialogTitle>
             <DialogDescription>
               {joinIntent.mode === 'squad'
-                ? 'Choose whether you want to create a squad or join an existing one, then save the player details the admin will use for the match.'
+                ? 'Captains pay once for the full squad. Members join free with an invite code and their own player details.'
                 : `Save the player details that will be shared with the admin for this ${tournament.game_type} tournament.`}
             </DialogDescription>
           </DialogHeader>
@@ -685,7 +654,12 @@ const TournamentDetailPage = () => {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-border bg-background/70 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Entry Fee</p>
-                <p className="mt-1 text-lg font-bold text-foreground">Rs.{entryFee}</p>
+                <p className="mt-1 text-lg font-bold text-foreground">Rs.{joinIntent.mode === 'squad' ? (squadJoinMode === 'create' ? squadEntryFee : 0) : entryFee}</p>
+                {joinIntent.mode === 'squad' ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {squadJoinMode === 'create' ? `${entryFee} x ${squadSize} players` : 'Member join is free'}
+                  </p>
+                ) : null}
               </div>
               <div className="rounded-xl border border-border bg-background/70 px-4 py-3">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Wallet Balance</p>
@@ -698,7 +672,13 @@ const TournamentDetailPage = () => {
             </div>
 
             <div className="space-y-2">
-              {freeEntriesAvailable > 0 ? (
+              {joinIntent.mode === 'squad' ? (
+                <div className="rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary">
+                  {squadJoinMode === 'create'
+                    ? `Captain pays Rs.${squadEntryFee} once. Teammates join free with the invite code.`
+                    : 'No wallet deduction for members. The captain has already paid the squad entry.'}
+                </div>
+              ) : freeEntriesAvailable > 0 ? (
                 <>
                   <label className="text-sm font-medium text-foreground">Choose Join Method</label>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -741,7 +721,9 @@ const TournamentDetailPage = () => {
               <div className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm text-muted-foreground">
                 Selected Join Method:{' '}
                 <span className="font-semibold text-foreground">
-                  {joinMethod === 'free_entry' ? 'Referral Reward Entry' : 'Wallet Balance'}
+                  {joinIntent.mode === 'squad'
+                    ? (squadJoinMode === 'create' ? 'Captain Full Squad Payment' : 'Free Squad Invite')
+                    : joinMethod === 'free_entry' ? 'Referral Reward Entry' : 'Wallet Balance'}
                 </span>
               </div>
             </div>
@@ -753,8 +735,8 @@ const TournamentDetailPage = () => {
                 </label>
                 <p className="text-xs text-muted-foreground">
                   {squadJoinMode === 'create'
-                    ? 'Set your squad name and a unique squad password. After payment, you will land directly in the squad lobby with share tools.'
-                    : 'Enter the squad password shared by your leader. After payment, you will land directly in the squad lobby.'}
+                    ? 'Set your squad name. After captain payment, the system generates an invite code in your lobby.'
+                    : 'Enter the invite code shared by your captain. No additional payment is required.'}
                 </p>
 
                 {squadJoinMode === 'create' ? (
@@ -769,25 +751,15 @@ const TournamentDetailPage = () => {
                         className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">Squad Password</label>
-                      <input
-                        type="text"
-                        value={squadForm.squadPassword}
-                        onChange={(event) => setSquadForm((current) => ({ ...current, squadPassword: event.target.value }))}
-                        placeholder="Create a unique password"
-                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Squad Password</label>
+                    <label className="text-sm font-medium text-foreground">Squad Invite Code</label>
                     <input
                       type="text"
                       value={squadForm.squadPassword}
                       onChange={(event) => setSquadForm((current) => ({ ...current, squadPassword: event.target.value }))}
-                      placeholder="Enter squad password"
+                      placeholder="VEX1234"
                       className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
@@ -831,7 +803,7 @@ const TournamentDetailPage = () => {
               disabled={isJoining}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {isJoining ? <Loader2 className="w-4 h-4 animate-spin" /> : joinIntent.mode === 'squad' ? (squadJoinMode === 'create' ? 'Create Squad and Join' : 'Join Squad') : 'Confirm Join'}
+              {isJoining ? <Loader2 className="w-4 h-4 animate-spin" /> : joinIntent.mode === 'squad' ? (squadJoinMode === 'create' ? `Pay Rs.${squadEntryFee} and Create` : 'Join Free') : 'Confirm Join'}
             </button>
           </DialogFooter>
         </DialogContent>

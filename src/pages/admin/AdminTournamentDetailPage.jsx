@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Crown, Edit, Loader2, Lock, RotateCcw, Trophy, Users, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Crown, Edit, Loader2, Lock, RotateCcw, Trash2, Trophy, Users, XCircle } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useParams } from 'react-router-dom';
 import EditTournamentModal from '@/components/EditTournamentModal';
@@ -154,7 +154,7 @@ const AdminTournamentDetailPage = () => {
     setActionLoading('refund');
     try {
       await apiClient.post(`/tournaments/${id}/refund`, {});
-      toast({ title: 'Refund Complete', description: 'All joined users have been refunded and the match is dismissed.' });
+      toast({ title: 'Refund Complete', description: squadMatch ? 'Full squad entries have been refunded to captains.' : 'All joined users have been refunded and the match is dismissed.' });
       await loadTournament();
     } catch (error) {
       toast({ title: 'Error', description: error.message || 'Failed to refund players.', variant: 'destructive' });
@@ -163,11 +163,29 @@ const AdminTournamentDetailPage = () => {
     }
   };
 
-  const currentSquadSummary = useMemo(() => (tournament?.squads || []).map((squad) => ({
-    ...squad,
-    isFull: (squad.memberCount || 0) >= (tournament?.squad_size || 4),
-    waitingCount: Math.max(0, (tournament?.squad_size || 4) - (squad.memberCount || 0))
-  })), [tournament]);
+  const handleRemoveSquad = async (squadId) => {
+    setActionLoading(`remove-squad-${squadId}`);
+    try {
+      await apiClient.delete(`/tournaments/${id}/squads/${squadId}`);
+      toast({ title: 'Squad Removed', description: 'The squad and its members were removed from this tournament.' });
+      await loadTournament();
+    } catch (error) {
+      toast({ title: 'Error', description: error.message || 'Failed to remove squad.', variant: 'destructive' });
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const currentSquadSummary = useMemo(() => (tournament?.squads || []).map((squad) => {
+    const memberCount = squad.memberCount || squad.members?.length || 0;
+    const isFull = squad.isComplete || squad.status === 'complete' || memberCount >= (tournament?.squad_size || 4);
+    return {
+      ...squad,
+      memberCount,
+      isFull,
+      waitingCount: Math.max(0, (tournament?.squad_size || 4) - memberCount)
+    };
+  }), [tournament]);
 
   const joinedUsersById = useMemo(() => new Map(joinedUsers.map((user) => [user._id || user.id, user])), [joinedUsers]);
   const prizeBreakdown = useMemo(() => calculatePrizeBreakdown(tournament), [tournament]);
@@ -335,10 +353,10 @@ const AdminTournamentDetailPage = () => {
                           <div>
                             <p className="font-semibold">{squad.name}</p>
                             <p className="text-sm text-muted-foreground">Captain: {squad.captain?.name || squad.captain?.email || 'Unknown'}</p>
-                            <p className="text-sm text-muted-foreground">Squad progress updates live as each paid member joins.</p>
+                            <p className="text-sm text-muted-foreground">Code: {squad.inviteCode || squad.squadCode || squad.squad_code || 'Generated'} | Entry paid: Rs.{squad.totalEntryFee || squad.total_entry_fee || (tournament.entry_fee * tournament.squad_size)}</p>
                           </div>
                           <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${squad.isFull ? 'bg-accent/20 text-accent' : 'bg-secondary/20 text-secondary'}`}>
-                            {squad.memberCount}/{tournament.squad_size}
+                            {squad.isFull ? 'Squad Complete' : `${squad.memberCount}/${tournament.squad_size}`}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -356,7 +374,7 @@ const AdminTournamentDetailPage = () => {
                                     <p className="font-medium">{member.name || 'Unknown Player'}</p>
                                     {(squad.captainId || squad.captain?._id) === (member._id || member.id) ? (
                                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                                        <Crown className="h-3 w-3" /> Leader
+                                        <Crown className="h-3 w-3" /> Captain
                                       </span>
                                     ) : null}
                                   </div>
@@ -377,6 +395,15 @@ const AdminTournamentDetailPage = () => {
                           );
                           })}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSquad(squad._id || squad.id)}
+                          disabled={actionLoading === `remove-squad-${squad._id || squad.id}` || !!tournament.winner_declared_at}
+                          className="inline-flex items-center gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-sm font-bold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {actionLoading === `remove-squad-${squad._id || squad.id}` ? 'Removing...' : 'Remove Squad'}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -407,8 +434,8 @@ const AdminTournamentDetailPage = () => {
                   >
                     <option value="">Select winning squad</option>
                     {currentSquadSummary.map((squad) => (
-                      <option key={squad._id || squad.id} value={squad._id || squad.id}>
-                        {squad.name} ({squad.memberCount}/{tournament.squad_size})
+                      <option key={squad._id || squad.id} value={squad._id || squad.id} disabled={!squad.isFull}>
+                        {squad.name} ({squad.memberCount}/{tournament.squad_size}){squad.isFull ? '' : ' - incomplete'}
                       </option>
                     ))}
                   </select>
@@ -475,7 +502,7 @@ const AdminTournamentDetailPage = () => {
               </button>
               <p className="text-sm text-muted-foreground">
                 {squadMatch
-                  ? 'Select only the winning squad. The system calculates 50%, splits it equally, credits wallets, and saves reward history.'
+                  ? 'Select a completed squad only. The system splits the squad reward equally, credits member wallets, and saves reward history.'
                   : 'Select 1st, 2nd, and 3rd place players. The system calculates rewards, credits wallets, and saves reward history.'}
               </p>
 

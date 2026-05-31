@@ -35,7 +35,7 @@ const SquadLobbyPage = () => {
   const platformName = getPlatformName(settings);
   const [loading, setLoading] = useState(true);
   const [lobby, setLobby] = useState(null);
-  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [copiedRoomId, setCopiedRoomId] = useState(false);
   const [copiedRoomPassword, setCopiedRoomPassword] = useState(false);
 
@@ -80,6 +80,10 @@ const SquadLobbyPage = () => {
 
   const squad = lobby?.squad;
   const roomDetails = lobby?.roomDetails;
+  const isCaptain = Boolean(squad?.canShareInvite || squad?.captainId === currentUserId);
+  const captainMember = useMemo(() => (
+    (squad?.members || []).find((member) => member.isLeader || member.id === squad?.captainId) || null
+  ), [squad]);
   const progressPercent = useMemo(() => {
     if (!squad?.memberCount || !lobby?.squadSize) return 0;
     return Math.min(100, (squad.memberCount / lobby.squadSize) * 100);
@@ -88,20 +92,21 @@ const SquadLobbyPage = () => {
   const copyValue = async (value, type) => {
     if (!value) return;
     await navigator.clipboard.writeText(value);
-    if (type === 'password') setCopiedPassword(true);
+    if (type === 'code') setCopiedCode(true);
     if (type === 'roomId') setCopiedRoomId(true);
     if (type === 'roomPassword') setCopiedRoomPassword(true);
-    toast({ title: 'Copied', description: `${type === 'password' ? 'Squad password' : 'Room detail'} copied to clipboard.` });
+    toast({ title: 'Copied', description: `${type === 'code' ? 'Squad invite code' : 'Room detail'} copied to clipboard.` });
     window.setTimeout(() => {
-      if (type === 'password') setCopiedPassword(false);
+      if (type === 'code') setCopiedCode(false);
       if (type === 'roomId') setCopiedRoomId(false);
       if (type === 'roomPassword') setCopiedRoomPassword(false);
     }, 1800);
   };
 
   const shareSquad = async () => {
-    if (!squad?.password) return;
-    const shareText = `Join my ${squad.name} squad in ${lobby?.tournamentTitle}. Squad password: ${squad.password}.`;
+    const inviteCode = squad?.inviteCode || squad?.code || squad?.password;
+    if (!inviteCode) return;
+    const shareText = `Join my ${squad.name} squad in ${lobby?.tournamentTitle}. Squad code: ${inviteCode}.`;
     const shareUrl = `${window.location.origin}/tournament/${id}`;
 
     if (navigator.share) {
@@ -192,79 +197,69 @@ const SquadLobbyPage = () => {
               )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {squad.members.map((member) => (
-                <div key={member.id} className="rounded-2xl border border-border/60 bg-background/45 p-4">
-                  <div className="flex items-start gap-3">
-                    <GameAvatar avatarId={member.avatarId} name={member.name} size="sm" className="rounded-2xl" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-foreground">{member.name}</p>
-                        {member.isLeader ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-                            <Crown className="h-3 w-3" /> Leader
-                          </span>
-                        ) : null}
-                        {member.isCurrentUser ? (
-                          <span className="inline-flex rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-secondary">
-                            You
-                          </span>
-                        ) : null}
+            {captainMember ? (
+              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                <div className="flex items-start gap-3">
+                  <GameAvatar avatarId={captainMember.avatarId} name={captainMember.name} size="sm" className="rounded-2xl" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-foreground">{captainMember.name}</p>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                        <Crown className="h-3 w-3" /> Captain
+                      </span>
+                      {captainMember.isCurrentUser ? (
+                        <span className="inline-flex rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-secondary">
+                          You
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 text-xs">
+                      <div className="rounded-xl bg-background/70 px-3 py-2">
+                        <p className="uppercase tracking-[0.16em] text-muted-foreground">Game Name</p>
+                        <p className="mt-1 font-medium text-foreground">{captainMember.inGameName || 'Saved'}</p>
                       </div>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2 text-xs">
-                        <div className="rounded-xl bg-background/70 px-3 py-2">
-                          <p className="uppercase tracking-[0.16em] text-muted-foreground">Game Name</p>
-                          <p className="mt-1 font-medium text-foreground">{member.inGameName || 'Pending'}</p>
-                        </div>
-                        <div className="rounded-xl bg-background/70 px-3 py-2">
-                          <p className="uppercase tracking-[0.16em] text-muted-foreground">Game UID</p>
-                          <p className="mt-1 font-medium text-foreground break-all">{member.gameUID || 'Pending'}</p>
-                        </div>
-                        <div className="rounded-xl bg-background/70 px-3 py-2">
-                          <p className="uppercase tracking-[0.16em] text-muted-foreground">Join Status</p>
-                          <p className="mt-1 font-medium text-secondary">Joined</p>
-                        </div>
-                        <div className="rounded-xl bg-background/70 px-3 py-2">
-                          <p className="uppercase tracking-[0.16em] text-muted-foreground">Payment</p>
-                          <p className="mt-1 font-medium text-foreground">{member.paymentStatus}</p>
-                        </div>
+                      <div className="rounded-xl bg-background/70 px-3 py-2">
+                        <p className="uppercase tracking-[0.16em] text-muted-foreground">Squad Status</p>
+                        <p className="mt-1 font-medium text-secondary">{squad.isComplete ? 'Squad Complete' : `${squad.remainingSlots} slot(s) open`}</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : null}
           </section>
 
           <div className="space-y-6">
-            <section className="rounded-[30px] border border-border/60 bg-[rgba(9,14,31,0.88)] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur-2xl">
-              <div className="mb-4 flex items-center gap-2">
-                <Lock className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-bold">Squad Invite</h2>
-              </div>
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-primary/80">Squad Password</p>
-                  <p className="mt-2 break-all font-mono text-2xl font-black text-primary">{squad.password}</p>
+            {isCaptain ? (
+              <section className="rounded-[30px] border border-border/60 bg-[rgba(9,14,31,0.88)] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur-2xl">
+                <div className="mb-4 flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-primary" />
+                  <h2 className="text-xl font-bold">Squad Invite</h2>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => copyValue(squad.password, 'password')}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground transition-all hover:bg-primary/90"
-                  >
-                    {copiedPassword ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Copy Password
-                  </button>
-                  <button
-                    type="button"
-                    onClick={shareSquad}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-accent/25 bg-accent/10 px-4 py-3 font-bold text-accent transition-all hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <Share2 className="h-4 w-4" /> Share Squad
-                  </button>
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-primary/80">Squad Invite Code</p>
+                    <p className="mt-2 break-all font-mono text-2xl font-black text-primary">{squad.inviteCode || squad.code || squad.password}</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => copyValue(squad.inviteCode || squad.code || squad.password, 'code')}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-bold text-primary-foreground transition-all hover:bg-primary/90"
+                    >
+                      {copiedCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Copy Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={shareSquad}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-accent/25 bg-accent/10 px-4 py-3 font-bold text-accent transition-all hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <Share2 className="h-4 w-4" /> Share Squad
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            ) : null}
 
             <section className="rounded-[30px] border border-border/60 bg-[rgba(9,14,31,0.88)] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur-2xl">
               <div className="mb-4 flex items-center gap-2">
@@ -310,7 +305,11 @@ const SquadLobbyPage = () => {
               ) : (
                 <div className="rounded-2xl border border-accent/20 bg-accent/10 p-4">
                   <p className="text-sm font-medium text-foreground">Room details are not live yet.</p>
-                  <p className="mt-2 text-sm text-muted-foreground">Room ID and password unlock at {formatDateTime(roomDetails?.availableAt)} for squad members only.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {squad.isComplete
+                      ? `Room ID and password unlock at ${formatDateTime(roomDetails?.availableAt)} for squad members only.`
+                      : 'Room details unlock only after your squad reaches full capacity.'}
+                  </p>
                 </div>
               )}
             </section>

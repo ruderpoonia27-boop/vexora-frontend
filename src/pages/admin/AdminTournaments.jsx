@@ -9,6 +9,7 @@ import EditTournamentModal from '@/components/EditTournamentModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { calculatePrizeBreakdown, isSquadTournament } from '@/lib/prizeUtils';
+import { formatStatusLabel } from '@/lib/utils';
 
 const formatDateTime = (value) => {
   if (!value) return 'Not scheduled';
@@ -138,7 +139,7 @@ export const AdminTournaments = () => {
                   tournament.status === 'completed' ? 'bg-accent/20 text-accent' :
                   'bg-muted text-muted-foreground'
                 }`}>
-                  {tournament.status}
+                  {formatStatusLabel(tournament.status)}
                 </span>
               </div>
 

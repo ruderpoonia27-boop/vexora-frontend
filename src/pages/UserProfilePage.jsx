@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Calendar, Edit3, LogOut, Loader2, Gamepad2, Shield, Sparkles } from 'lucide-react';
 import EditProfileModal from '@/components/EditProfileModal';
 import apiClient from '@/lib/apiClient';
+import { formatStatusLabel } from '@/lib/utils';
 import GameAvatar from '@/components/GameAvatar';
 import { RARITY_STYLES, getAvatarById } from '@/data/avatarCatalog';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
@@ -167,7 +168,7 @@ const UserProfilePage = () => {
                       <div className="flex justify-between items-start mb-2 gap-3">
                         <span className="text-xs font-bold text-primary uppercase">{tournament.game_type}</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${tournament.status === 'active' ? 'bg-secondary/20 text-secondary' : 'bg-muted text-muted-foreground'}`}>
-                          {tournament.status}
+                          {formatStatusLabel(tournament.status)}
                         </span>
                       </div>
                       <p className="font-bold mb-2">{tournament.title}</p>

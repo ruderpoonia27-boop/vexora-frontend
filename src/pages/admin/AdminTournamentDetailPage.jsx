@@ -7,6 +7,7 @@ import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import GameAvatar from '@/components/GameAvatar';
 import { calculatePrizeBreakdown, isSquadTournament } from '@/lib/prizeUtils';
+import { formatStatusLabel } from '@/lib/utils';
 
 const formatDateTime = (value) => {
   if (!value) return 'Not set';
@@ -91,7 +92,7 @@ const AdminTournamentDetailPage = () => {
     setActionLoading('finish');
     try {
       await apiClient.post(`/tournaments/${id}/finish`, {});
-      toast({ title: 'Tournament Finished', description: 'This tournament is now marked as finished.' });
+      toast({ title: 'Tournament Completed', description: 'This tournament is now marked as completed.' });
       await loadTournament();
     } catch (error) {
       toast({ title: 'Error', description: error.message || 'Failed to finish tournament.', variant: 'destructive' });
@@ -103,9 +104,10 @@ const AdminTournamentDetailPage = () => {
   const handleDeclareWinner = async () => {
     const squadMatch = isSquadTournament(tournament);
     const payableSelections = winnerSelections.filter((entry) => Number(entry.amount || 0) > 0);
-    const selectedIds = payableSelections.map((entry) => squadMatch ? entry.squadId : entry.userId).filter(Boolean);
-    if (selectedIds.length !== payableSelections.length) {
-      return toast({ title: 'Missing Winner Info', description: `Select ${squadMatch ? 'a squad' : 'a player'} for every prize place.`, variant: 'destructive' });
+    const selectedSelections = payableSelections.filter((entry) => squadMatch ? entry.squadId : entry.userId);
+    const selectedIds = selectedSelections.map((entry) => squadMatch ? entry.squadId : entry.userId);
+    if (selectedSelections.length === 0) {
+      return toast({ title: 'Missing Winner Info', description: `Select at least one ${squadMatch ? 'squad' : 'player'} to declare.`, variant: 'destructive' });
     }
     if (new Set(selectedIds).size !== selectedIds.length) {
       return toast({ title: 'Invalid Winners', description: `Each winning position must be a different ${squadMatch ? 'squad' : 'player'}.`, variant: 'destructive' });
@@ -114,7 +116,7 @@ const AdminTournamentDetailPage = () => {
     setActionLoading('winner');
     try {
       await apiClient.post(`/tournaments/${id}/declare-winner`, {
-        winnerEntries: payableSelections.map((entry) => ({
+        winnerEntries: selectedSelections.map((entry) => ({
           place: entry.place,
           userId: entry.userId,
           squadId: entry.squadId
@@ -221,7 +223,7 @@ const AdminTournamentDetailPage = () => {
                   tournament.status === 'completed' ? 'bg-accent/20 text-accent' :
                   'bg-muted text-muted-foreground'
                 }`}>
-                  {tournament.status}
+                  {formatStatusLabel(tournament.status)}
                 </span>
               </div>
               <h1 className="text-3xl md:text-4xl font-bold">{tournament.title}</h1>
@@ -412,7 +414,7 @@ const AdminTournamentDetailPage = () => {
                 disabled={tournament.status === 'completed' || actionLoading === 'finish'}
                 className="w-full bg-secondary text-secondary-foreground font-bold py-3 rounded-xl hover:bg-secondary/90 transition-colors disabled:opacity-50"
               >
-                {actionLoading === 'finish' ? 'Finishing...' : tournament.status === 'completed' ? 'Tournament Finished' : 'Finish Tournament'}
+                {actionLoading === 'finish' ? 'Finishing...' : tournament.status === 'completed' ? 'Completed' : 'Complete Tournament'}
               </button>
               <div className="space-y-3">
                 {winnerSelections.map((entry, index) => (
@@ -432,8 +434,8 @@ const AdminTournamentDetailPage = () => {
                     >
                       <option value="">{squadMatch ? 'Select squad' : 'Select player'}</option>
                       {squadMatch ? currentSquadSummary.map((squad) => (
-                        <option key={squad._id || squad.id} value={squad._id || squad.id} disabled={!squad.isFull}>
-                          {squad.name} ({squad.memberCount}/{tournament.squad_size}){squad.isFull ? '' : ' - incomplete'}
+                        <option key={squad._id || squad.id} value={squad._id || squad.id}>
+                          {squad.name} ({squad.memberCount}/{tournament.squad_size})
                         </option>
                       )) : joinedUsers.map((user) => (
                         <option key={user._id || user.id} value={user._id || user.id}>
@@ -468,8 +470,8 @@ const AdminTournamentDetailPage = () => {
               </button>
               <p className="text-sm text-muted-foreground">
                 {squadMatch
-                  ? 'Select a completed squad only. The system splits the squad reward equally, credits member wallets, and saves reward history.'
-                  : 'Select 1st, 2nd, and 3rd place players. The system calculates rewards, credits wallets, and saves reward history.'}
+                  ? 'Select any joined squad. The system splits the squad reward equally among its current members, credits wallets, and saves reward history.'
+                  : 'Select the confirmed prize places only. The system calculates rewards, credits wallets, and saves reward history.'}
               </p>
 
               {tournament.winner ? (

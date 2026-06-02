@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Trophy, Zap, Shield, Loader2, CalendarClock, Copy, Check, Clock, Crown, Users, Gift } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
+import { formatStatusLabel } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import GameAvatar from '@/components/GameAvatar';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
@@ -547,7 +548,7 @@ const TournamentDetailPage = () => {
                     : 'bg-primary text-primary-foreground hover:bg-primary/90 box-glow-primary'
                 }`}
               >
-                {isJoining ? <Loader2 className="w-6 h-6 animate-spin" /> : isFull ? 'Tournament Full' : !isJoinable ? `Tournament ${tournament.status}` : `Join Tournament - ${isFreeEntry ? 'FREE' : `Rs.${entryFee}`}`}
+                {isJoining ? <Loader2 className="w-6 h-6 animate-spin" /> : isFull ? 'Tournament Full' : !isJoinable ? `Tournament ${formatStatusLabel(tournament.status)}` : `Join Tournament - ${isFreeEntry ? 'FREE' : `Rs.${entryFee}`}`}
               </button>
             ) : (
               <div className="space-y-6">

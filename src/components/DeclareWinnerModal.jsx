@@ -3,6 +3,7 @@ import { Loader2, Trophy } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { calculatePrizeBreakdown, isSquadTournament } from '@/lib/prizeUtils';
+import { formatStatusLabel } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -126,7 +127,7 @@ const DeclareWinnerModal = ({ isOpen, onOpenChange, onSuccess }) => {
               <option value="">-- Choose Tournament --</option>
               {tournaments.map((tournament) => (
                 <option key={tournament._id} value={tournament._id}>
-                  {tournament.name} - {tournament.status} ({tournament.joined_count || 0}/{tournament.total_slots} joined)
+                  {tournament.name} - {formatStatusLabel(tournament.status)} ({tournament.joined_count || 0}/{tournament.total_slots} joined)
                 </option>
               ))}
             </select>

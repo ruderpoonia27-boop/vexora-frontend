@@ -41,6 +41,60 @@ const getDisplayPrizePool = (tournament) => Number(
   ?? 0
 );
 
+const getDisplayName = (user) => {
+  if (!user || typeof user === 'string') return '';
+  return user.name || user.email || '';
+};
+
+const getPrizePlaceLabel = (place) => {
+  const normalized = Number(place || 1);
+  if (normalized === 1) return '1st Prize';
+  if (normalized === 2) return '2nd Prize';
+  if (normalized === 3) return '3rd Prize';
+  return `${normalized}th Prize`;
+};
+
+const getResultRows = (tournament, matchType) => {
+  const squadMatch = matchType === 'squad';
+  const entries = tournament?.winnerEntries || tournament?.winner_entries || [];
+  if (entries.length > 0) {
+    return entries
+      .map((entry) => {
+        const place = Number(entry.place || 1);
+        const fallbackWinner = place === 1
+          ? tournament?.winner
+          : place === 2
+          ? (tournament?.secondWinner || tournament?.second_winner)
+          : place === 3
+          ? (tournament?.thirdWinner || tournament?.third_winner)
+          : null;
+        return {
+          place,
+          label: entry.label || getPrizePlaceLabel(place),
+          name: squadMatch
+            ? (entry.squadName || entry.squad_name || tournament?.winnerSquadName || tournament?.winner_squad_name || 'Winning Squad')
+            : (getDisplayName(entry.user) || getDisplayName(fallbackWinner) || 'Winner'),
+          amount: Number(entry.amount || 0),
+          rewardPerMember: Number(entry.rewardPerMember || entry.reward_per_member || 0)
+        };
+      })
+      .filter((entry) => entry.name)
+      .sort((left, right) => left.place - right.place);
+  }
+
+  const winnerName = squadMatch
+    ? (tournament?.winnerSquadName || tournament?.winner_squad_name || '')
+    : getDisplayName(tournament?.winner);
+
+  return winnerName ? [{
+    place: 1,
+    label: getPrizePlaceLabel(1),
+    name: winnerName,
+    amount: Number(tournament?.winnerPrize || tournament?.winner_prize || 0),
+    rewardPerMember: Number(tournament?.rewardPerMember || tournament?.reward_per_member || 0)
+  }] : [];
+};
+
 const TournamentDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -152,6 +206,7 @@ const TournamentDetailPage = () => {
   const reservedSlots = Number(tournament?.reserved_slots || tournament?.reservedSlots || joinedCount);
   const isFull = matchType === 'squad' ? reservedSlots >= totalSlots : joinedCount >= totalSlots;
   const isJoinable = tournament?.status === 'active';
+  const isCompleted = tournament?.status === 'completed';
   const isDismissed = tournament?.status === 'dismissed';
   const roomId = tournament?.room_id || tournament?.roomId || '';
   const roomPassword = tournament?.room_password || tournament?.roomPassword || '';
@@ -190,7 +245,9 @@ const TournamentDetailPage = () => {
   const currentSquadComplete = currentSquad
     ? (currentSquad.isComplete || currentSquad.status === 'complete' || (currentSquad.memberCount || currentSquad.members?.length || 0) >= squadSize)
     : false;
-  const canSeeRoomDetails = Boolean(roomId) && (matchType !== 'squad' || currentSquadComplete) && (roomVisibleAtStartTime || tournament?.status === 'completed' || tournament?.status === 'dismissed');
+  const canSeeRoomDetails = Boolean(roomId) && (matchType !== 'squad' || currentSquadComplete) && (roomVisibleAtStartTime || isCompleted || tournament?.status === 'dismissed');
+  const resultRows = useMemo(() => getResultRows(tournament, matchType), [matchType, tournament]);
+  const resultsDeclared = resultRows.length > 0 || Boolean(tournament?.winner_declared_at || tournament?.winnerDeclaredAt);
 
   const currentSquadCaptain = useMemo(() => {
     if (!currentSquad) return null;
@@ -420,6 +477,48 @@ const TournamentDetailPage = () => {
           </div>
 
           <div className="p-8 md:p-12 space-y-8">
+            {resultsDeclared ? (
+              <div className="rounded-3xl border border-accent/35 bg-[linear-gradient(135deg,rgba(34,197,94,0.12),rgba(14,165,233,0.06))] p-6 shadow-[0_0_28px_rgba(34,197,94,0.08)]">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-accent">
+                      <Crown className="h-4 w-4" /> Results Declared
+                    </p>
+                    <h2 className="mt-3 text-2xl font-black text-foreground">Match Winners</h2>
+                  </div>
+                  <span className="inline-flex w-fit rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-bold uppercase text-primary">
+                    {formatStatusLabel(tournament.status)}
+                  </span>
+                </div>
+
+                {resultRows.length > 0 ? (
+                  <div className="grid gap-3">
+                    {resultRows.map((result) => (
+                      <div key={`${result.place}-${result.name}`} className="flex flex-col gap-3 rounded-2xl border border-border/45 bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent/35 bg-accent/10 text-lg font-black text-accent">
+                            #{result.place}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{result.label}</p>
+                            <p className="truncate text-lg font-black text-foreground">{result.name}</p>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-left sm:text-right">
+                          {result.amount > 0 ? <p className="text-xl font-black text-accent">Rs.{result.amount}</p> : null}
+                          {matchType === 'squad' && result.rewardPerMember > 0 ? <p className="text-xs text-muted-foreground">Rs.{result.rewardPerMember} per member</p> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-border/50 bg-background/70 p-5 text-sm text-muted-foreground">
+                    Results have been declared. Winner details are being synced.
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             <div className="rounded-2xl border border-border/50 bg-background/50 p-6">
               <h2 className="mb-4 text-xl font-bold">Rules</h2>
               <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">

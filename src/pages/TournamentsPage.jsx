@@ -87,7 +87,7 @@ const TournamentsPage = () => {
         if (filters.status.length > 0) params.set('status', filters.status.join(','));
         if (activeView === 'joined' && currentUserId) params.set('joinedUserId', currentUserId);
 
-        const data = await apiClient.get(`/tournaments?${params.toString()}`, { cacheTtl: 10000 });
+        const data = await apiClient.get(`/tournaments?${params.toString()}`, { cacheTtl: 0 });
         if (!isMounted) return;
         const nextTournaments = data.items || data.tournaments || [];
         setTournaments(nextTournaments);

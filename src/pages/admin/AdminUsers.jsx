@@ -4,9 +4,14 @@ import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const USERS_PAGE_SIZE = 500;
+
+const getUsersFromResponse = (data) => data.items || data.users || (Array.isArray(data) ? data : []);
+
 export const AdminUsers = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -22,8 +27,17 @@ export const AdminUsers = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get('/admin/users');
-      setUsers(data.items || data.users || data);
+      const firstPage = await apiClient.get(`/admin/users?page=1&perPage=${USERS_PAGE_SIZE}`, { cacheTtl: 0 });
+      const totalPages = Math.max(1, Number(firstPage.totalPages || 1));
+      const allUsers = [...getUsersFromResponse(firstPage)];
+
+      for (let page = 2; page <= totalPages; page += 1) {
+        const data = await apiClient.get(`/admin/users?page=${page}&perPage=${USERS_PAGE_SIZE}`, { cacheTtl: 0 });
+        allUsers.push(...getUsersFromResponse(data));
+      }
+
+      setUsers(allUsers);
+      setTotalUsers(Number(firstPage.totalItems || allUsers.length));
     } catch (error) {
       toast({ title: 'Error', description: error.message || 'Failed to load users.', variant: 'destructive' });
     } finally {
@@ -150,6 +164,7 @@ export const AdminUsers = () => {
             <Users className="w-6 h-6 text-primary" /> Users
           </h2>
           <p className="text-sm text-muted-foreground mt-1">Review accounts, control access, adjust wallet balances, and grant free entries.</p>
+          <p className="text-xs text-muted-foreground mt-1">Showing {filteredUsers.length} of {totalUsers || users.length} users.</p>
         </div>
         <button onClick={fetchUsers} className="flex items-center gap-2 bg-muted/50 hover:bg-accent/20 px-4 py-2 rounded-xl text-sm font-medium">
           <RefreshCw className="w-4 h-4" /> Refresh

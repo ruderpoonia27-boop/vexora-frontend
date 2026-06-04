@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -30,6 +30,7 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
     squad_size: '4',
     entry_fee: '',
     base_prize: '',
+    prize_pool_visible: true,
     first_prize_percentage: '50',
     solo_first_place_percentage: '60',
     solo_second_place_percentage: '30',
@@ -49,6 +50,7 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
       squad_size: String(tournament.squad_size || tournament.squadSize || 4),
       entry_fee: String(tournament.entry_fee ?? 0),
       base_prize: String(tournament.base_prize ?? 0),
+      prize_pool_visible: tournament.prize_pool_visible ?? tournament.prizePoolVisible ?? true,
       first_prize_percentage: String(tournament.first_prize_percentage ?? tournament.firstPrizePercentage ?? 50),
       solo_first_place_percentage: String(tournament.solo_first_place_percentage ?? tournament.soloFirstPlacePercentage ?? 60),
       solo_second_place_percentage: String(tournament.solo_second_place_percentage ?? tournament.soloSecondPlacePercentage ?? 30),
@@ -109,6 +111,7 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
         squad_size: formData.match_type === 'squad' ? squadSize : 1,
         entry_fee: entryFee,
         base_prize: basePrize,
+        prize_pool_visible: formData.prize_pool_visible,
         first_prize_percentage: formData.match_type === 'squad' ? firstPrizePercentage : 100,
         solo_first_place_percentage: formData.match_type === 'solo' ? soloFirstPlacePercentage : 60,
         solo_second_place_percentage: formData.match_type === 'solo' ? soloSecondPlacePercentage : 30,
@@ -225,6 +228,24 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
                 className="w-full bg-input border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-50"
               />
               {formData.match_type === 'solo' ? <p className="mt-1 text-xs text-muted-foreground">Solo prize pool me base prize + entry collection dono add honge.</p> : null}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-foreground">Prize Pool Visibility</p>
+                <p className="text-xs text-muted-foreground">Prize calculation stays active; public card/detail display follows this toggle.</p>
+              </div>
+              <button
+                type="button"
+                disabled={isCompleted}
+                onClick={() => setFormData((current) => ({ ...current, prize_pool_visible: !current.prize_pool_visible }))}
+                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all disabled:opacity-50 ${formData.prize_pool_visible ? 'border-secondary/35 bg-secondary/10 text-secondary' : 'border-muted bg-muted/30 text-muted-foreground'}`}
+              >
+                {formData.prize_pool_visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {formData.prize_pool_visible ? 'Prize Pool Visible' : 'Prize Pool Hidden'}
+              </button>
             </div>
           </div>
 
@@ -346,3 +367,4 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
 };
 
 export default EditTournamentModal;
+

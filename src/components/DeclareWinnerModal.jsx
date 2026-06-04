@@ -56,7 +56,6 @@ const DeclareWinnerModal = ({ isOpen, onOpenChange, onSuccess }) => {
   const prizeBreakdown = calculatePrizeBreakdown(selectedTournamentData);
   const squads = selectedTournamentData?.squads || [];
   const winningSquad = squads.find((squad) => (squad._id || squad.id) === selectedSquad);
-  const rewardPerMember = winningSquad?.memberCount ? Math.floor(prizeBreakdown.firstPrize / winningSquad.memberCount) : 0;
 
   const resetForm = () => {
     setSelectedTournament('');
@@ -151,7 +150,7 @@ const DeclareWinnerModal = ({ isOpen, onOpenChange, onSuccess }) => {
                 ))}
               </select>
               <p className="mt-2 text-xs text-muted-foreground">
-                Prize Pool Rs.{prizeBreakdown.prizePool} | {prizeBreakdown.firstPrizePercentage}% payout | Each member Rs.{rewardPerMember}
+                Prize Pool Rs.{prizeBreakdown.prizePool} | {prizeBreakdown.firstPrizePercentage}% payout | Captain receives Rs.{prizeBreakdown.firstPrize}
               </p>
             </div>
           ) : (
@@ -193,3 +192,4 @@ const DeclareWinnerModal = ({ isOpen, onOpenChange, onSuccess }) => {
 };
 
 export default DeclareWinnerModal;
+

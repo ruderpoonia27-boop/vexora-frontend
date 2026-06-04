@@ -9,6 +9,7 @@ import { formatStatusLabel } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import GameAvatar from '@/components/GameAvatar';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
+import { calculatePrizeBreakdown } from '@/lib/prizeUtils';
 
 const formatDateTime = (value) => {
   if (!value) return 'Not set';
@@ -54,13 +55,23 @@ const getPrizePlaceLabel = (place) => {
   return `${normalized}th Prize`;
 };
 
+const placeholderCodes = ['VEX-ALPHA', 'VEX-BRAVO', 'VEX-CHARLIE', 'VEX-DELTA', 'VEX-ECHO', 'VEX-FOXTROT'];
+
+const getPlaceholderCode = (index) => placeholderCodes[index] || `VEX-${String(index + 1).padStart(2, '0')}`;
+
 const getResultRows = (tournament, matchType) => {
   const squadMatch = matchType === 'squad';
   const entries = tournament?.winnerEntries || tournament?.winner_entries || [];
-  if (entries.length > 0) {
-    return entries
-      .map((entry) => {
-        const place = Number(entry.place || 1);
+  const resultsDeclared = entries.length > 0 || Boolean(tournament?.winner_declared_at || tournament?.winnerDeclaredAt || tournament?.winner);
+
+  if (resultsDeclared) {
+    const declaredByPlace = new Map(entries.map((entry, index) => [Number(entry.place || index + 1), entry]));
+    const prizeEntries = calculatePrizeBreakdown(tournament).prizeEntries.filter((entry) => Number(entry.amount || 0) > 0);
+
+    if (prizeEntries.length > 0) {
+      return prizeEntries.map((prizeEntry, index) => {
+        const declaredEntry = declaredByPlace.get(Number(prizeEntry.place));
+        const place = Number(prizeEntry.place || index + 1);
         const fallbackWinner = place === 1
           ? tournament?.winner
           : place === 2
@@ -68,18 +79,22 @@ const getResultRows = (tournament, matchType) => {
           : place === 3
           ? (tournament?.thirdWinner || tournament?.third_winner)
           : null;
+        const realName = declaredEntry
+          ? (squadMatch
+            ? (declaredEntry.squadName || declaredEntry.squad_name || '')
+            : (getDisplayName(declaredEntry.user) || getDisplayName(fallbackWinner)))
+          : '';
+
         return {
           place,
-          label: entry.label || getPrizePlaceLabel(place),
-          name: squadMatch
-            ? (entry.squadName || entry.squad_name || tournament?.winnerSquadName || tournament?.winner_squad_name || 'Winning Squad')
-            : (getDisplayName(entry.user) || getDisplayName(fallbackWinner) || 'Winner'),
-          amount: Number(entry.amount || 0),
-          rewardPerMember: Number(entry.rewardPerMember || entry.reward_per_member || 0)
+          label: declaredEntry?.label || prizeEntry.label || getPrizePlaceLabel(place),
+          name: realName || getPlaceholderCode(index),
+          amount: Number(declaredEntry?.amount || prizeEntry.amount || 0),
+          rewardPerMember: Number(declaredEntry?.rewardPerMember || declaredEntry?.reward_per_member || 0),
+          pending: !realName
         };
-      })
-      .filter((entry) => entry.name)
-      .sort((left, right) => left.place - right.place);
+      }).sort((left, right) => left.place - right.place);
+    }
   }
 
   const winnerName = squadMatch
@@ -91,7 +106,8 @@ const getResultRows = (tournament, matchType) => {
     label: getPrizePlaceLabel(1),
     name: winnerName,
     amount: Number(tournament?.winnerPrize || tournament?.winner_prize || 0),
-    rewardPerMember: Number(tournament?.rewardPerMember || tournament?.reward_per_member || 0)
+    rewardPerMember: Number(tournament?.rewardPerMember || tournament?.reward_per_member || 0),
+    pending: false
   }] : [];
 };
 
@@ -200,12 +216,15 @@ const TournamentDetailPage = () => {
   const entryType = tournament?.entry_type || tournament?.entryType || (Number(entryFee) > 0 ? 'paid' : 'free');
   const isFreeEntry = entryType === 'free';
   const prizeNote = tournament?.prize_display_note || tournament?.prizeDisplayNote || '';
+  const prizePoolVisible = tournament?.prize_pool_visible ?? tournament?.prizePoolVisible ?? true;
   const squadSize = Number(tournament?.squad_size || tournament?.squadSize || 4);
   const squadEntryFee = Number(tournament?.squad_entry_fee || tournament?.squadEntryFee || entryFee * squadSize);
   const currentPrizePool = getDisplayPrizePool(tournament);
   const reservedSlots = Number(tournament?.reserved_slots || tournament?.reservedSlots || joinedCount);
   const isFull = matchType === 'squad' ? reservedSlots >= totalSlots : joinedCount >= totalSlots;
-  const isJoinable = tournament?.status === 'active';
+  const startTimestamp = tournament?.startTime ? new Date(tournament.startTime).getTime() : NaN;
+  const hasMatchStarted = !Number.isNaN(startTimestamp) && startTimestamp <= Date.now();
+  const isJoinable = tournament?.status === 'active' && !hasMatchStarted;
   const isCompleted = tournament?.status === 'completed';
   const isDismissed = tournament?.status === 'dismissed';
   const roomId = tournament?.room_id || tournament?.roomId || '';
@@ -447,12 +466,12 @@ const TournamentDetailPage = () => {
               <p className="mb-3 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-primary">
                 <Trophy className="h-5 w-5" /> Prize Pool
               </p>
-                <p className="text-5xl font-black text-primary text-glow-primary md:text-6xl">Rs.{currentPrizePool}</p>
-                {prizeNote ? (
-                  <p className="mt-4 inline-flex rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-bold text-accent">
-                    {prizeNote}
-                  </p>
-                ) : null}
+              <p className="text-5xl font-black text-primary text-glow-primary md:text-6xl">{prizePoolVisible ? `Rs.${currentPrizePool}` : 'Visible Soon'}</p>
+              {prizeNote ? (
+                <p className="mt-4 inline-flex rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-bold text-accent">
+                  {prizeNote}
+                </p>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -501,12 +520,12 @@ const TournamentDetailPage = () => {
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{result.label}</p>
-                            <p className="truncate text-lg font-black text-foreground">{result.name}</p>
+                            <p className={`truncate text-lg font-black ${result.pending ? 'font-mono text-muted-foreground' : 'text-foreground'}`}>{result.name}</p>
                           </div>
                         </div>
                         <div className="shrink-0 text-left sm:text-right">
                           {result.amount > 0 ? <p className="text-xl font-black text-accent">Rs.{result.amount}</p> : null}
-                          {matchType === 'squad' && result.rewardPerMember > 0 ? <p className="text-xs text-muted-foreground">Rs.{result.rewardPerMember} per member</p> : null}
+                          {matchType === 'squad' && result.amount > 0 ? <p className="text-xs text-muted-foreground">Credited to squad captain</p> : null}
                         </div>
                       </div>
                     ))}
@@ -647,7 +666,7 @@ const TournamentDetailPage = () => {
                     : 'bg-primary text-primary-foreground hover:bg-primary/90 box-glow-primary'
                 }`}
               >
-                {isJoining ? <Loader2 className="w-6 h-6 animate-spin" /> : isFull ? 'Tournament Full' : !isJoinable ? `Tournament ${formatStatusLabel(tournament.status)}` : `Join Tournament - ${isFreeEntry ? 'FREE' : `Rs.${entryFee}`}`}
+                {isJoining ? <Loader2 className="w-6 h-6 animate-spin" /> : isFull ? 'Tournament Full' : !isJoinable ? (hasMatchStarted ? 'Match Started' : `Tournament ${formatStatusLabel(tournament.status)}`) : `Join Tournament - ${isFreeEntry ? 'FREE' : `Rs.${entryFee}`}`}
               </button>
             ) : (
               <div className="space-y-6">
@@ -925,3 +944,7 @@ const TournamentDetailPage = () => {
 };
 
 export default TournamentDetailPage;
+
+
+
+

@@ -2,6 +2,7 @@ import React, { memo, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalendarClock, CheckCircle2, Copy, Crown, KeyRound, Loader2, Radio, Trophy, Users, Zap } from 'lucide-react';
 import { formatStatusLabel } from '@/lib/utils';
+import { calculatePrizeBreakdown } from '@/lib/prizeUtils';
 
 const formatDateTime = (value) => {
   if (!value) return 'Not set';
@@ -35,30 +36,44 @@ const getOrdinalLabel = (place) => {
   return `${normalized}th Prize`;
 };
 
+const placeholderCodes = ['VEX-ALPHA', 'VEX-BRAVO', 'VEX-CHARLIE', 'VEX-DELTA', 'VEX-ECHO', 'VEX-FOXTROT'];
+
+const getPlaceholderCode = (index) => placeholderCodes[index] || `VEX-${String(index + 1).padStart(2, '0')}`;
+
 const getWinnerRows = (tournament, isSquadMatch) => {
   const entries = tournament.winnerEntries || tournament.winner_entries || [];
-  if (entries.length > 0) {
-    return entries
-      .map((entry) => {
-        const fallbackWinner = Number(entry.place) === 1
+  const resultsDeclared = entries.length > 0 || Boolean(tournament.winner_declared_at || tournament.winnerDeclaredAt || tournament.winner);
+
+  if (resultsDeclared) {
+    const declaredByPlace = new Map(entries.map((entry, index) => [Number(entry.place || index + 1), entry]));
+    const prizeEntries = calculatePrizeBreakdown(tournament).prizeEntries.filter((entry) => Number(entry.amount || 0) > 0);
+
+    if (prizeEntries.length > 0) {
+      return prizeEntries.map((prizeEntry, index) => {
+        const declaredEntry = declaredByPlace.get(Number(prizeEntry.place));
+        const fallbackWinner = Number(prizeEntry.place) === 1
           ? tournament.winner
-          : Number(entry.place) === 2
+          : Number(prizeEntry.place) === 2
           ? (tournament.secondWinner || tournament.second_winner)
-          : Number(entry.place) === 3
+          : Number(prizeEntry.place) === 3
           ? (tournament.thirdWinner || tournament.third_winner)
           : null;
+        const realName = declaredEntry
+          ? (isSquadMatch
+            ? (declaredEntry.squadName || declaredEntry.squad_name || '')
+            : (getUserName(declaredEntry.user) || getUserName(fallbackWinner)))
+          : '';
+
         return {
-          place: Number(entry.place || 1),
-          label: entry.label || getOrdinalLabel(entry.place),
-          name: isSquadMatch
-            ? (entry.squadName || entry.squad_name || tournament.winnerSquadName || tournament.winner_squad_name || 'Winning Squad')
-            : (getUserName(entry.user) || getUserName(fallbackWinner) || 'Winner'),
-          amount: Number(entry.amount || 0),
-          rewardPerMember: Number(entry.rewardPerMember || entry.reward_per_member || 0)
+          place: Number(prizeEntry.place),
+          label: declaredEntry?.label || prizeEntry.label || getOrdinalLabel(prizeEntry.place),
+          name: realName || getPlaceholderCode(index),
+          amount: Number(declaredEntry?.amount || prizeEntry.amount || 0),
+          rewardPerMember: Number(declaredEntry?.rewardPerMember || declaredEntry?.reward_per_member || 0),
+          pending: !realName
         };
-      })
-      .filter((entry) => entry.name)
-      .sort((left, right) => left.place - right.place);
+      }).sort((left, right) => left.place - right.place);
+    }
   }
 
   const winnerName = isSquadMatch
@@ -70,7 +85,8 @@ const getWinnerRows = (tournament, isSquadMatch) => {
     label: getOrdinalLabel(1),
     name: winnerName,
     amount: Number(tournament.winnerPrize || tournament.winner_prize || 0),
-    rewardPerMember: Number(tournament.rewardPerMember || tournament.reward_per_member || 0)
+    rewardPerMember: Number(tournament.rewardPerMember || tournament.reward_per_member || 0),
+    pending: false
   }] : [];
 };
 
@@ -92,6 +108,7 @@ const TournamentCard = ({ tournament, onJoin }) => {
   const entryType = tournament.entry_type || tournament.entryType || (Number(tournament.entry_fee || 0) > 0 ? 'paid' : 'free');
   const isFreeEntry = entryType === 'free';
   const prizeNote = tournament.prize_display_note || tournament.prizeDisplayNote || '';
+  const prizePoolVisible = tournament.prize_pool_visible ?? tournament.prizePoolVisible ?? true;
   const totalSlots = tournament.total_slots || 0;
   const joinedCount = tournament.joined_count || 0;
   const isFull = joinedCount >= totalSlots;
@@ -103,6 +120,8 @@ const TournamentCard = ({ tournament, onJoin }) => {
   const isCompleted = status === 'completed';
   const isDismissed = status === 'dismissed' || status === 'cancelled';
   const startTime = tournament.match_start_time || tournament.startTime;
+  const startTimestamp = startTime ? new Date(startTime).getTime() : NaN;
+  const hasMatchStarted = !Number.isNaN(startTimestamp) && startTimestamp <= now;
   const startTimeLabel = tournament.startTimeLabel || formatDateTime(startTime);
   const roomId = tournament.room_id || tournament.roomId || '';
   const roomPassword = tournament.room_password || tournament.roomPassword || '';
@@ -165,7 +184,7 @@ const TournamentCard = ({ tournament, onJoin }) => {
   const handleJoinClick = async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (isFull || isJoining || isJoined || isDismissed || isCompleted || !onJoin) return;
+    if (isFull || isJoining || isJoined || isDismissed || isCompleted || hasMatchStarted || !onJoin) return;
 
     setIsJoining(true);
     try {
@@ -236,7 +255,7 @@ const TournamentCard = ({ tournament, onJoin }) => {
             <p className="mb-2 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
               <Trophy className="h-4 w-4" /> Prize Pool
             </p>
-            <p className="text-4xl font-black text-accent text-glow-accent">Rs.{currentPrizePool}</p>
+            <p className="text-4xl font-black text-accent text-glow-accent">{prizePoolVisible ? `Rs.${currentPrizePool}` : 'Visible Soon'}</p>
             {prizeNote ? (
               <p className="mt-2 inline-flex rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
                 {prizeNote}
@@ -316,11 +335,11 @@ const TournamentCard = ({ tournament, onJoin }) => {
                   <div key={`${winner.place}-${winner.name}`} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-background/60 px-3 py-2">
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{winner.label}</p>
-                      <p className="truncate text-sm font-black text-foreground">{winner.name}</p>
+                      <p className={`truncate text-sm font-black ${winner.pending ? 'font-mono text-muted-foreground' : 'text-foreground'}`}>{winner.name}</p>
                     </div>
                     <div className="shrink-0 text-right">
                       {winner.amount > 0 ? <p className="text-sm font-black text-accent">Rs.{winner.amount}</p> : null}
-                      {isSquadMatch && winner.rewardPerMember > 0 ? <p className="text-[10px] text-muted-foreground">Rs.{winner.rewardPerMember}/member</p> : null}
+                      {isSquadMatch && winner.amount > 0 ? <p className="text-[10px] text-muted-foreground">Captain reward</p> : null}
                     </div>
                   </div>
                 ))}
@@ -368,14 +387,14 @@ const TournamentCard = ({ tournament, onJoin }) => {
             ) : (
               <button
                 onClick={handleJoinClick}
-                disabled={isFull || isJoining || isDismissed || isCompleted}
+                disabled={isFull || isJoining || isDismissed || isCompleted || hasMatchStarted}
                 className={`w-full py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
-                  isFull
+                  isFull || hasMatchStarted
                     ? 'bg-muted text-muted-foreground cursor-not-allowed'
                     : 'bg-primary text-primary-foreground hover:bg-primary/90 box-glow-primary'
                 }`}
               >
-                {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : isFull ? 'Tournament Full' : 'Join Now'}
+                {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : isFull ? 'Tournament Full' : hasMatchStarted ? 'Match Started' : 'Join Now'}
               </button>
             )}
           </div>
@@ -386,3 +405,5 @@ const TournamentCard = ({ tournament, onJoin }) => {
 };
 
 export default memo(TournamentCard);
+
+

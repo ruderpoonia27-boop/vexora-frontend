@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Crown, Edit, Loader2, Lock, RotateCcw, Trash2, Trophy, Users, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Crown, Edit, Eye, EyeOff, Loader2, Lock, RotateCcw, Trash2, Trophy, Users, XCircle } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useParams } from 'react-router-dom';
 import EditTournamentModal from '@/components/EditTournamentModal';
@@ -17,6 +17,16 @@ const formatDateTime = (value) => {
 };
 
 const getPrizePool = (tournament) => calculatePrizeBreakdown(tournament).prizePool;
+
+const getUserId = (user) => {
+  if (!user) return '';
+  if (typeof user === 'string') return user;
+  return user._id || user.id || '';
+};
+
+const getDeclaredWinnerMap = (tournament) => new Map((tournament?.winnerEntries || tournament?.winner_entries || [])
+  .map((entry) => [Number(entry.place), entry])
+  .filter(([place]) => Boolean(place)));
 
 const AdminTournamentDetailPage = () => {
   const { id } = useParams();
@@ -49,13 +59,19 @@ const AdminTournamentDetailPage = () => {
       setJoinedUsers(joinsData);
       setRoomId(tournamentData.room_id || '');
       setRoomPassword(tournamentData.room_password || '');
-      setWinnerSelections(calculatePrizeBreakdown(tournamentData).prizeEntries.map((entry, index) => ({
-        place: entry.place || index + 1,
-        label: entry.label,
-        amount: entry.amount,
-        userId: '',
-        squadId: ''
-      })));
+      const declaredWinnerMap = getDeclaredWinnerMap(tournamentData);
+      setWinnerSelections(calculatePrizeBreakdown(tournamentData).prizeEntries.map((entry, index) => {
+        const place = entry.place || index + 1;
+        const declaredWinner = declaredWinnerMap.get(Number(place));
+        return {
+          place,
+          label: entry.label,
+          amount: entry.amount,
+          userId: declaredWinner?.userId || getUserId(declaredWinner?.user) || '',
+          squadId: declaredWinner?.squadId || declaredWinner?.squad_id || '',
+          declared: Boolean(declaredWinner)
+        };
+      }));
     } catch (error) {
       toast({ title: 'Error', description: error.message || 'Failed to load tournament details.', variant: 'destructive' });
       navigate('/admin', { state: { tab: 'tournaments' } });
@@ -88,6 +104,25 @@ const AdminTournamentDetailPage = () => {
     }
   };
 
+  const handlePrizePoolVisibilityToggle = async () => {
+    const currentVisibility = tournament?.prize_pool_visible ?? tournament?.prizePoolVisible ?? true;
+    setActionLoading('prize-visibility');
+    try {
+      await apiClient.put(`/tournaments/${id}`, {
+        prize_pool_visible: !currentVisibility
+      });
+      toast({
+        title: !currentVisibility ? 'Prize Pool Visible' : 'Prize Pool Hidden',
+        description: !currentVisibility ? 'Users can now see the prize pool.' : 'Prize pool is hidden from user cards and details.'
+      });
+      await loadTournament();
+    } catch (error) {
+      toast({ title: 'Error', description: error.message || 'Failed to update prize pool visibility.', variant: 'destructive' });
+    } finally {
+      setActionLoading('');
+    }
+  };
+
   const handleFinishTournament = async () => {
     setActionLoading('finish');
     try {
@@ -104,12 +139,14 @@ const AdminTournamentDetailPage = () => {
   const handleDeclareWinner = async () => {
     const squadMatch = isSquadTournament(tournament);
     const payableSelections = winnerSelections.filter((entry) => Number(entry.amount || 0) > 0);
-    const selectedSelections = payableSelections.filter((entry) => squadMatch ? entry.squadId : entry.userId);
+    const pendingSelections = payableSelections.filter((entry) => !entry.declared);
+    const declaredIds = payableSelections.filter((entry) => entry.declared).map((entry) => squadMatch ? entry.squadId : entry.userId).filter(Boolean);
+    const selectedSelections = pendingSelections.filter((entry) => squadMatch ? entry.squadId : entry.userId);
     const selectedIds = selectedSelections.map((entry) => squadMatch ? entry.squadId : entry.userId);
     if (selectedSelections.length === 0) {
-      return toast({ title: 'Missing Winner Info', description: `Select at least one ${squadMatch ? 'squad' : 'player'} to declare.`, variant: 'destructive' });
+      return toast({ title: 'Missing Winner Info', description: `Select at least one pending ${squadMatch ? 'squad' : 'player'} to declare.`, variant: 'destructive' });
     }
-    if (new Set(selectedIds).size !== selectedIds.length) {
+    if (new Set(selectedIds).size !== selectedIds.length || selectedIds.some((item) => declaredIds.includes(item))) {
       return toast({ title: 'Invalid Winners', description: `Each winning position must be a different ${squadMatch ? 'squad' : 'player'}.`, variant: 'destructive' });
     }
 
@@ -123,8 +160,8 @@ const AdminTournamentDetailPage = () => {
         }))
       });
       toast({
-        title: 'Winner Declared',
-        description: squadMatch ? 'Winning squad rewards were split and credited automatically.' : 'Solo rewards were calculated and credited automatically.'
+        title: 'Winner Updated',
+        description: squadMatch ? 'Selected squad rewards were credited to squad captains automatically.' : 'Selected winner rewards were credited automatically.'
       });
       await loadTournament();
     } catch (error) {
@@ -187,7 +224,11 @@ const AdminTournamentDetailPage = () => {
   const joinedUsersById = useMemo(() => new Map(joinedUsers.map((user) => [user._id || user.id, user])), [joinedUsers]);
   const prizeBreakdown = useMemo(() => calculatePrizeBreakdown(tournament), [tournament]);
   const squadMatch = isSquadTournament(tournament);
+  const pendingWinnerPlaces = winnerSelections.filter((entry) => Number(entry.amount || 0) > 0 && !entry.declared);
+  const declaredWinnerPlaces = winnerSelections.filter((entry) => entry.declared);
+  const canDeclareMoreWinners = pendingWinnerPlaces.length > 0;
   const freeEntry = (tournament?.entry_type || tournament?.entryType) === 'free' || Number(tournament?.entry_fee || 0) === 0;
+  const prizePoolVisible = tournament?.prize_pool_visible ?? tournament?.prizePoolVisible ?? true;
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -229,12 +270,22 @@ const AdminTournamentDetailPage = () => {
               <h1 className="text-3xl md:text-4xl font-bold">{tournament.title}</h1>
               <p className="text-muted-foreground mt-2">Match starts at {formatDateTime(tournament.match_start_time || tournament.startTime)}</p>
             </div>
-            <button
-              onClick={() => setEditOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-            >
-              <Edit className="w-4 h-4" /> Edit Match Settings
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={handlePrizePoolVisibilityToggle}
+                disabled={actionLoading === 'prize-visibility'}
+                className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition-colors disabled:opacity-50 ${prizePoolVisible ? 'bg-secondary/10 text-secondary hover:bg-secondary hover:text-secondary-foreground' : 'bg-muted/50 text-muted-foreground hover:bg-muted'}`}
+              >
+                {actionLoading === 'prize-visibility' ? <Loader2 className="w-4 h-4 animate-spin" /> : prizePoolVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                {prizePoolVisible ? 'Prize Pool Visible' : 'Prize Pool Hidden'}
+              </button>
+              <button
+                onClick={() => setEditOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                <Edit className="w-4 h-4" /> Edit Match Settings
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-4">
@@ -421,7 +472,7 @@ const AdminTournamentDetailPage = () => {
                   <div key={`${entry.place}-${entry.label}`} className="rounded-2xl border border-border bg-background/35 p-3">
                     <div className="mb-2 flex items-center justify-between gap-3 text-sm">
                       <span className="font-semibold">{entry.label}</span>
-                      <span className="text-muted-foreground">Rs.{entry.amount}</span>
+                      <span className="flex items-center gap-2 text-muted-foreground">Rs.{entry.amount}{entry.declared ? <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase text-accent">Declared</span> : null}</span>
                     </div>
                     <select
                       value={squadMatch ? entry.squadId : entry.userId}
@@ -430,22 +481,31 @@ const AdminTournamentDetailPage = () => {
                           ? { ...item, [squadMatch ? 'squadId' : 'userId']: event.target.value }
                           : item
                       )))}
-                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                      disabled={entry.declared}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <option value="">{squadMatch ? 'Select squad' : 'Select player'}</option>
-                      {squadMatch ? currentSquadSummary.map((squad) => (
-                        <option key={squad._id || squad.id} value={squad._id || squad.id}>
-                          {squad.name} ({squad.memberCount}/{tournament.squad_size})
-                        </option>
-                      )) : joinedUsers.map((user) => (
-                        <option key={user._id || user.id} value={user._id || user.id}>
-                          {user.name || user.email}
-                        </option>
-                      ))}
+                      {squadMatch ? currentSquadSummary.map((squad) => {
+                        const squadId = squad._id || squad.id;
+                        const alreadyDeclared = winnerSelections.some((item) => item.declared && item.squadId === squadId && item.place !== entry.place);
+                        return (
+                          <option key={squadId} value={squadId} disabled={alreadyDeclared}>
+                            {squad.name} ({squad.memberCount}/{tournament.squad_size}){alreadyDeclared ? ' - declared' : ''}
+                          </option>
+                        );
+                      }) : joinedUsers.map((user) => {
+                        const userId = user._id || user.id;
+                        const alreadyDeclared = winnerSelections.some((item) => item.declared && item.userId === userId && item.place !== entry.place);
+                        return (
+                          <option key={userId} value={userId} disabled={alreadyDeclared}>
+                            {user.name || user.email}{alreadyDeclared ? ' - declared' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     {squadMatch ? (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Reward splits equally among selected squad members.
+                        Full reward credits to the selected squad captain.
                       </p>
                     ) : null}
                   </div>
@@ -463,15 +523,15 @@ const AdminTournamentDetailPage = () => {
               </div>
               <button
                 onClick={handleDeclareWinner}
-                disabled={(squadMatch ? currentSquadSummary.length === 0 : joinedUsers.length === 0) || actionLoading === 'winner' || !!tournament.winner_declared_at}
+                disabled={(squadMatch ? currentSquadSummary.length === 0 : joinedUsers.length === 0) || actionLoading === 'winner' || !canDeclareMoreWinners}
                 className="w-full bg-accent text-accent-foreground font-bold py-3 rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50"
               >
-                {actionLoading === 'winner' ? 'Declaring...' : tournament.winner_declared_at ? 'Winner Declared' : squadMatch ? 'Declare Winning Squad' : 'Declare Winner'}
+                {actionLoading === 'winner' ? 'Declaring...' : !canDeclareMoreWinners ? 'All Winners Declared' : declaredWinnerPlaces.length > 0 ? 'Declare Remaining Winners' : squadMatch ? 'Declare Winning Squad' : 'Declare Winner'}
               </button>
               <p className="text-sm text-muted-foreground">
                 {squadMatch
-                  ? 'Select any joined squad. The system splits the squad reward equally among its current members, credits wallets, and saves reward history.'
-                  : 'Select the confirmed prize places only. The system calculates rewards, credits wallets, and saves reward history.'}
+                  ? 'Select pending prize places only. Already declared squads stay locked so rewards are not credited twice.'
+                  : 'Select pending prize places only. Already declared players stay locked so rewards are not credited twice.'}
               </p>
 
               {tournament.winner ? (
@@ -480,7 +540,7 @@ const AdminTournamentDetailPage = () => {
                     <Crown className="w-4 h-4" /> Winner: {squadMatch ? (tournament.winnerSquadName || tournament.winner_squad_name || 'Winning Squad') : (tournament.winner.name || tournament.winner.email)}
                   </div>
                   <p className="text-sm text-muted-foreground">First Prize: Rs.{tournament.winner_prize || 0}</p>
-                  {squadMatch ? <p className="text-sm text-muted-foreground">Reward per member: Rs.{tournament.rewardPerMember || tournament.reward_per_member || 0}</p> : (
+                  {squadMatch ? <p className="text-sm text-muted-foreground">Captain reward: Rs.{tournament.winner_prize || tournament.winnerPrize || 0}</p> : (
                     <>
                       <p className="text-sm text-muted-foreground">2nd: {tournament.secondWinner?.name || tournament.second_winner?.name || 'Not set'} | Rs.{tournament.secondPlacePrize || tournament.second_place_prize || 0}</p>
                       <p className="text-sm text-muted-foreground">3rd: {tournament.thirdWinner?.name || tournament.third_winner?.name || 'Not set'} | Rs.{tournament.thirdPlacePrize || tournament.third_place_prize || 0}</p>
@@ -516,6 +576,10 @@ const AdminTournamentDetailPage = () => {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Total Collection</span>
                   <span className="font-medium">Rs.{prizeBreakdown.totalCollection}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-muted-foreground">Public Prize Pool</span>
+                  <span className="font-medium">{prizePoolVisible ? 'Visible' : 'Hidden'}</span>
                 </div>
                 {squadMatch ? (
                   <>
@@ -591,3 +655,6 @@ const AdminTournamentDetailPage = () => {
 };
 
 export default AdminTournamentDetailPage;
+
+
+

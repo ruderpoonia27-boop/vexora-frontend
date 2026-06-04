@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,6 +34,7 @@ const initialFormData = {
   winner_count_mode: '3',
   custom_winner_count: '4',
   prize_display_note: '',
+  prize_pool_visible: true,
   prize_distribution: buildDistribution(3, 'percentage'),
   total_slots: '',
   match_start_date: '',
@@ -147,6 +148,7 @@ const CreateTournamentModal = ({ isOpen, onOpenChange, onSuccess }) => {
         winner_count: winnerCount,
         prize_distribution: prizeDistribution,
         prize_display_note: formData.prize_display_note.trim(),
+        prize_pool_visible: formData.prize_pool_visible,
         total_slots: totalSlots,
         status: 'active'
       };
@@ -205,6 +207,23 @@ const CreateTournamentModal = ({ isOpen, onOpenChange, onSuccess }) => {
             <span className="block text-sm font-medium text-muted-foreground">Card Highlight Text</span>
             <input type="text" name="prize_display_note" value={formData.prize_display_note} onChange={handleChange} placeholder="Example: 3 prizes available" className="w-full bg-input border border-border rounded-lg px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50" />
           </label>
+
+          <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-foreground">Prize Pool Visibility</p>
+                <p className="text-xs text-muted-foreground">Calculation continues; only public display changes.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData((current) => ({ ...current, prize_pool_visible: !current.prize_pool_visible }))}
+                className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all ${formData.prize_pool_visible ? 'border-secondary/35 bg-secondary/10 text-secondary' : 'border-muted bg-muted/30 text-muted-foreground'}`}
+              >
+                {formData.prize_pool_visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {formData.prize_pool_visible ? 'Prize Pool Visible' : 'Prize Pool Hidden'}
+              </button>
+            </div>
+          </div>
 
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-4">
             <div>
@@ -316,3 +335,6 @@ const CreateTournamentModal = ({ isOpen, onOpenChange, onSuccess }) => {
 };
 
 export default CreateTournamentModal;
+
+
+

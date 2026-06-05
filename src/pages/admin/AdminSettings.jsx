@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Settings, Shield, HardDrive, Coins, Wallet, Loader2, CreditCard, Upload, X } from 'lucide-react';
+import { Save, Settings, Shield, HardDrive, Coins, Wallet, Loader2, CreditCard, Upload, X, MessageCircle, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import apiClient from '@/lib/apiClient';
-import { DEFAULT_PLATFORM_NAME, getPlatformName, useSettings } from '@/hooks/useSettings.js';
+import { DEFAULT_CONTACT_SETTINGS, DEFAULT_PLATFORM_NAME, getPlatformName, useSettings } from '@/hooks/useSettings.js';
 import { usePaymentSettings } from '@/hooks/usePaymentSettings';
 
 const PaymentSettingsPanel = () => {
@@ -209,6 +209,10 @@ export const AdminSettings = () => {
     contactEmail: 'support@nexusarena.com',
     min_deposit_amount: '10',
     min_withdraw_amount: '50',
+    whatsappEnabled: DEFAULT_CONTACT_SETTINGS.whatsappEnabled,
+    whatsappNumber: DEFAULT_CONTACT_SETTINGS.whatsappNumber,
+    telegramEnabled: DEFAULT_CONTACT_SETTINGS.telegramEnabled,
+    telegramLink: DEFAULT_CONTACT_SETTINGS.telegramLink,
     maintenanceMode: false
   });
 
@@ -219,7 +223,11 @@ export const AdminSettings = () => {
         platformName: getPlatformName(settings),
         contactEmail: settings.contact_email || settings.contactEmail || 'support@nexusarena.com',
         min_deposit_amount: settings.min_deposit_amount?.toString() || '10',
-        min_withdraw_amount: settings.min_withdraw_amount?.toString() || '50'
+        min_withdraw_amount: settings.min_withdraw_amount?.toString() || '50',
+        whatsappEnabled: (settings.contactSettings || DEFAULT_CONTACT_SETTINGS).whatsappEnabled,
+        whatsappNumber: (settings.contactSettings || DEFAULT_CONTACT_SETTINGS).whatsappNumber || '',
+        telegramEnabled: (settings.contactSettings || DEFAULT_CONTACT_SETTINGS).telegramEnabled,
+        telegramLink: (settings.contactSettings || DEFAULT_CONTACT_SETTINGS).telegramLink || ''
       }));
     }
   }, [initialLoading, settings]);
@@ -260,14 +268,24 @@ export const AdminSettings = () => {
         platform_name: formData.platformName.trim(),
         contact_email: formData.contactEmail.trim(),
         min_deposit_amount: minDep,
-        min_withdraw_amount: minWith
+        min_withdraw_amount: minWith,
+        contactSettings: {
+          whatsappEnabled: formData.whatsappEnabled,
+          whatsappNumber: formData.whatsappNumber.trim(),
+          telegramEnabled: formData.telegramEnabled,
+          telegramLink: formData.telegramLink.trim()
+        }
       });
       setFormData(prev => ({
         ...prev,
         platformName: updated.platform_name || updated.platformName || prev.platformName,
         contactEmail: updated.contact_email || updated.contactEmail || prev.contactEmail,
         min_deposit_amount: updated.min_deposit_amount?.toString() || minDep.toString(),
-        min_withdraw_amount: updated.min_withdraw_amount?.toString() || minWith.toString()
+        min_withdraw_amount: updated.min_withdraw_amount?.toString() || minWith.toString(),
+        whatsappEnabled: (updated.contactSettings || prev).whatsappEnabled,
+        whatsappNumber: (updated.contactSettings || prev).whatsappNumber || '',
+        telegramEnabled: (updated.contactSettings || prev).telegramEnabled,
+        telegramLink: (updated.contactSettings || prev).telegramLink || ''
       }));
 
       toast({ title: "Settings Saved", description: "Platform configurations updated." });
@@ -333,6 +351,78 @@ export const AdminSettings = () => {
           </div>
         </div>
 
+        <div className="bg-card/95 border border-primary/20 p-6 rounded-2xl space-y-6 shadow-[0_0_24px_rgba(0,212,255,0.08)]">
+          <div className="flex flex-col gap-3 border-b border-border/50 pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 text-primary rounded-lg"><MessageCircle className="w-5 h-5" /></div>
+              <div>
+                <h3 className="text-lg font-bold">Contact & Social Buttons</h3>
+                <p className="text-xs text-muted-foreground">Control floating support buttons shown on the website.</p>
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Active: <span className="font-bold text-foreground">{[formData.whatsappEnabled && 'WhatsApp', formData.telegramEnabled && 'Telegram'].filter(Boolean).join(', ') || 'None'}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-[#25D366]/25 bg-[rgba(37,211,102,0.06)] p-5 transition-all hover:border-[#25D366]/45 hover:shadow-[0_0_18px_rgba(37,211,102,0.12)]">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#25D366]/30 bg-[#25D366]/10 text-[#25D366]"><MessageCircle className="h-5 w-5" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">WhatsApp Button</p>
+                    <p className="text-xs text-muted-foreground">Enter number with country code.</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input type="checkbox" name="whatsappEnabled" checked={formData.whatsappEnabled} onChange={handleChange} className="sr-only peer" />
+                  <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-white after:transition-all peer-checked:bg-[#25D366] peer-checked:after:translate-x-full" />
+                </label>
+              </div>
+              <label className="space-y-2 block">
+                <span className="text-sm font-medium text-muted-foreground">WhatsApp Number</span>
+                <input
+                  type="text"
+                  name="whatsappNumber"
+                  value={formData.whatsappNumber}
+                  onChange={handleChange}
+                  placeholder="+91XXXXXXXXXX"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-foreground transition-all focus:outline-none focus:ring-2 focus:ring-[#25D366]/60"
+                />
+              </label>
+              <p className="mt-2 text-xs text-muted-foreground">Blank number keeps the existing WhatsApp channel fallback active.</p>
+            </div>
+
+            <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 transition-all hover:border-accent/45 hover:shadow-[0_0_18px_rgba(217,70,239,0.12)]">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary"><Send className="h-5 w-5" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">Telegram Button</p>
+                    <p className="text-xs text-muted-foreground">Use t.me link, @username, or username.</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input type="checkbox" name="telegramEnabled" checked={formData.telegramEnabled} onChange={handleChange} className="sr-only peer" />
+                  <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                </label>
+              </div>
+              <label className="space-y-2 block">
+                <span className="text-sm font-medium text-muted-foreground">Telegram Link</span>
+                <input
+                  type="text"
+                  name="telegramLink"
+                  value={formData.telegramLink}
+                  onChange={handleChange}
+                  placeholder="https://t.me/vexora"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </label>
+              <p className="mt-2 text-xs text-muted-foreground">Telegram button appears only when enabled and a link is set.</p>
+            </div>
+          </div>
+        </div>
         <div className="bg-card border border-border/50 p-6 rounded-2xl space-y-6 shadow-sm">
           <div className="flex items-center gap-3 border-b border-border/50 pb-4">
             <div className="p-2 bg-secondary/10 text-secondary rounded-lg"><Wallet className="w-5 h-5" /></div>
@@ -424,3 +514,5 @@ export const AdminSettings = () => {
     </div>
   );
 };
+
+

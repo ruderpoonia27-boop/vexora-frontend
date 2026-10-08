@@ -142,7 +142,7 @@ const HomePage = () => {
                 {featuredTournaments.map(tournament => (
                   <CarouselItem key={tournament._id} className="pl-4 md:basis-1/2 lg:basis-1/3">
                     <div className="p-1 h-full">
-                      <TournamentCard tournament={tournament} onJoin={() => {}} />
+                      <TournamentCard tournament={tournament} />
                     </div>
                   </CarouselItem>
                 ))}

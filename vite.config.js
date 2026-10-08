@@ -1,6 +1,7 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { createLogger, defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 import inlineEditPlugin from './plugins/visual-editor/vite-plugin-react-inline-editor.js';
 import editModeDevPlugin from './plugins/visual-editor/vite-plugin-edit-mode.js';
 import selectionModePlugin from './plugins/selection-mode/vite-plugin-selection-mode.js';
@@ -278,6 +279,78 @@ logger.error = (msg, options) => {
 	loggerError(msg, options);
 }
 
+const APP_BACKGROUND = '#080d1c';
+
+// Installable app: manifest + a generated service worker that precaches the built app shell.
+// API calls are never cached, so wallet and tournament data always come live from the server.
+const pwaPlugin = VitePWA({
+	registerType: 'prompt',
+	injectRegister: false,
+	includeAssets: ['icons/favicon.png', 'icons/vexora-icon-180.png', 'brand/vexora-logo.png'],
+	manifest: {
+		id: '/',
+		name: 'Vexora',
+		short_name: 'Vexora',
+		description: 'Join BGMI and Free Fire tournaments, manage your wallet, build squads and climb the leaderboard.',
+		start_url: '/?source=pwa',
+		scope: '/',
+		display: 'standalone',
+		display_override: ['standalone', 'minimal-ui'],
+		orientation: 'portrait',
+		theme_color: APP_BACKGROUND,
+		background_color: APP_BACKGROUND,
+		categories: ['games', 'sports', 'entertainment'],
+		lang: 'en',
+		dir: 'ltr',
+		prefer_related_applications: false,
+		icons: [72, 96, 128, 144, 152, 180, 192, 384, 512].map((size) => ({
+			src: `/icons/vexora-icon-${size}.png`,
+			sizes: `${size}x${size}`,
+			type: 'image/png',
+			purpose: 'any'
+		})).concat({
+			src: '/icons/vexora-maskable-512.png',
+			sizes: '512x512',
+			type: 'image/png',
+			purpose: 'maskable'
+		}),
+		screenshots: [
+			{
+				src: '/screenshots/vexora-mobile-launch.png',
+				sizes: '390x844',
+				type: 'image/png',
+				form_factor: 'narrow',
+				label: 'Vexora tournaments on mobile'
+			}
+		],
+		shortcuts: [
+			{ name: 'Tournaments', short_name: 'Play', url: '/tournaments?source=shortcut', icons: [{ src: '/icons/vexora-icon-96.png', sizes: '96x96' }] },
+			{ name: 'Wallet', short_name: 'Wallet', url: '/wallet?source=shortcut', icons: [{ src: '/icons/vexora-icon-96.png', sizes: '96x96' }] }
+		]
+	},
+	workbox: {
+		globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
+		// Admin screens load on demand; players never download them up front.
+		globIgnores: ['screenshots/**', 'assets/Admin*'],
+		maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+		navigateFallback: '/index.html',
+		// Never answer these paths with the app shell.
+		navigateFallbackDenylist: [/^\/api\//, /^\/\.well-known\//],
+		cleanupOutdatedCaches: true,
+		clientsClaim: true,
+		runtimeCaching: [
+			{
+				urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
+				handler: 'StaleWhileRevalidate',
+				options: { cacheName: 'google-fonts', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 } }
+			}
+		]
+	},
+	devOptions: {
+		enabled: false
+	}
+});
+
 export default defineConfig({
 	optimizeDeps: {
 		include: ['react', 'react-dom', 'react-router-dom', 'lucide-react'],
@@ -286,7 +359,8 @@ export default defineConfig({
 	plugins: [
 		...(isDev ? [inlineEditPlugin(), editModeDevPlugin(), selectionModePlugin(), iframeRouteRestorationPlugin()] : []),
 		react(),
-		addTransformIndexHtml
+		addTransformIndexHtml,
+		pwaPlugin
 	],
 	server: {
 		port: 3000,

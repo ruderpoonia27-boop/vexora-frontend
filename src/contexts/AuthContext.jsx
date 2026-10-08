@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '@/lib/apiClient';
+import { clearWalletCache, prefetchWallet } from '@/lib/walletCache';
 
 const AuthContext = createContext();
 const USER_STORAGE_KEY = 'currentUser';
@@ -40,6 +41,9 @@ export const AuthProvider = ({ children }) => {
       if (cachedUser && localStorage.getItem('token')) {
         try {
           setCurrentUser(JSON.parse(cachedUser));
+          // Show the app straight away from the cached session; refreshUser below verifies it.
+          setInitialLoading(false);
+          prefetchWallet();
         } catch {
           localStorage.removeItem(USER_STORAGE_KEY);
         }
@@ -69,6 +73,7 @@ export const AuthProvider = ({ children }) => {
       apiClient.token = data.token;
       setCurrentUser(data.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+      prefetchWallet();
       return data;
     } catch (error) {
       throw new Error(error.message || 'Login failed');
@@ -88,6 +93,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    clearWalletCache();
     apiClient.token = null;
     localStorage.removeItem(USER_STORAGE_KEY);
     setCurrentUser(null);

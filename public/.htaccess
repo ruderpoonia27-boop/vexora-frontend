@@ -16,4 +16,9 @@
 	<If "%{REQUEST_URI} =~ m#^/assets/.*$#">
 		Header set Cache-Control "public, max-age=604800"
 	</If>
+
+	# The service worker must always be re-checked so app updates reach users
+	<If "%{REQUEST_URI} == '/sw.js'">
+		Header set Cache-Control "no-cache, no-store, must-revalidate"
+	</If>
 </IfModule>

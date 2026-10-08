@@ -11,6 +11,7 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import MobileBottomNav from './components/MobileBottomNav';
 import FloatingWhatsAppButton from './components/FloatingWhatsAppButton';
+import AppShellNotices from './components/AppShellNotices';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -21,7 +22,6 @@ const TournamentsPage = lazy(() => import('./pages/TournamentsPage'));
 const TournamentDetailPage = lazy(() => import('./pages/TournamentDetailPage'));
 const SquadLobbyPage = lazy(() => import('./pages/SquadLobbyPage'));
 const WalletPage = lazy(() => import('./pages/WalletPage'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
@@ -154,11 +154,7 @@ const AnimatedRoutes = () => {
           </ProtectedRoute>
       } />
       
-      <Route path="/admin-dashboard" element={
-          <ProtectedRoute requireAdmin={true}>
-              <LazyPage><AdminDashboard /></LazyPage>
-          </ProtectedRoute>
-      } />
+      <Route path="/admin-dashboard" element={<Navigate to="/admin" replace />} />
 
       <Route path="/admin/tournament/:id" element={
           <ProtectedRoute requireAdmin={true}>
@@ -192,6 +188,7 @@ function App() {
                             </MainLayout>
                             <FloatingWhatsAppButton />
                         </div>
+                        <AppShellNotices />
                         <Toaster />
                     </Router>
                 </AdminAuthProvider>

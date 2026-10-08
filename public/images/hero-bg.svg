@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#05071a"/>
+      <stop offset="0.55" stop-color="#0d1240"/>
+      <stop offset="1" stop-color="#0a0e27"/>
+    </linearGradient>
+    <radialGradient id="glowCyan" cx="0.78" cy="0.22" r="0.55">
+      <stop offset="0" stop-color="#00d4ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#00d4ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowMagenta" cx="0.18" cy="0.7" r="0.55">
+      <stop offset="0" stop-color="#d946ef" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#d946ef" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="horizon" cx="0.5" cy="0.6" r="0.5">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="floorFade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#00d4ff" stop-opacity="0"/>
+      <stop offset="0.25" stop-color="#00d4ff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#d946ef" stop-opacity="0.35"/>
+    </linearGradient>
+    <pattern id="hex" width="56" height="97" patternUnits="userSpaceOnUse" patternTransform="scale(0.9)">
+      <path d="M28 0 L56 16 L56 48 L28 64 L0 48 L0 16 Z M28 64 L28 97" fill="none" stroke="#00d4ff" stroke-opacity="0.07" stroke-width="1.2"/>
+    </pattern>
+    <filter id="blur"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#hex)"/>
+  <rect width="1920" height="1080" fill="url(#glowCyan)"/>
+  <rect width="1920" height="1080" fill="url(#glowMagenta)"/>
+  <rect width="1920" height="1080" fill="url(#horizon)"/>
+
+  <!-- stage light beams -->
+  <g fill="url(#beam)">
+    <polygon points="380,0 470,0 820,650 640,650"/>
+    <polygon points="1450,0 1540,0 1280,650 1100,650"/>
+    <polygon points="930,0 990,0 1010,650 910,650" opacity="0.7"/>
+  </g>
+
+  <!-- distant city / arena skyline -->
+  <path fill="#070a22" d="M0 650 L0 560 L90 560 L90 520 L160 520 L160 585 L250 585 L250 480 L300 460 L350 480 L350 600 L460 600 L460 540 L540 540 L540 505 L600 505 L600 610 L720 610 L720 560 L790 530 L860 560 L860 620 L1060 620 L1060 560 L1130 530 L1200 560 L1200 610 L1320 610 L1320 500 L1380 500 L1380 540 L1460 540 L1460 600 L1570 600 L1570 470 L1620 455 L1670 470 L1670 585 L1760 585 L1760 520 L1830 520 L1830 560 L1920 560 L1920 650 Z"/>
+  <line x1="0" y1="650" x2="1920" y2="650" stroke="#7dd3fc" stroke-opacity="0.8" stroke-width="2" filter="url(#blur)"/>
+
+  <!-- perspective grid floor -->
+  <g stroke="url(#floorFade)" stroke-width="1.5" fill="none">
+    <path d="M0 680 H1920 M0 720 H1920 M0 775 H1920 M0 850 H1920 M0 955 H1920"/>
+    <path d="M960 650 L960 1080 M960 650 L720 1080 M960 650 L480 1080 M960 650 L240 1080 M960 650 L0 1080 M960 650 L-300 1080 M960 650 L-700 1080 M960 650 L1200 1080 M960 650 L1440 1080 M960 650 L1680 1080 M960 650 L1920 1080 M960 650 L2220 1080 M960 650 L2620 1080"/>
+  </g>
+
+  <!-- floating particles -->
+  <g fill="#e0f2fe">
+    <circle cx="210" cy="180" r="2" opacity="0.6"/>
+    <circle cx="520" cy="320" r="1.5" opacity="0.5"/>
+    <circle cx="760" cy="140" r="2.5" opacity="0.4"/>
+    <circle cx="1180" cy="260" r="2" opacity="0.6"/>
+    <circle cx="1390" cy="120" r="1.5" opacity="0.5"/>
+    <circle cx="1700" cy="300" r="2.5" opacity="0.5"/>
+    <circle cx="1820" cy="160" r="1.5" opacity="0.4"/>
+    <circle cx="90" cy="380" r="1.5" opacity="0.4"/>
+  </g>
+</svg>

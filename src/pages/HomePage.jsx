@@ -61,7 +61,7 @@ const HomePage = () => {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(217,70,239,0.15)_0%,transparent_50%)]"></div>
         </div>
 
-        <div className="container mx-auto px-4 z-10 text-center">
+        <div className="relative container mx-auto px-4 z-10 text-center">
           <div className="max-w-5xl mx-auto page-transition">
             <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 text-primary font-bold text-sm mb-6 tracking-wide border border-primary/20">
               {platformName.toUpperCase()} MOBILE GAMING

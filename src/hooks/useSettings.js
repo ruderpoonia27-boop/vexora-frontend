@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '@/lib/apiClient';
 
-export const DEFAULT_PLATFORM_NAME = 'Nexus Arena';
+export const DEFAULT_PLATFORM_NAME = 'Vexora';
 
 export const DEFAULT_CONTACT_SETTINGS = {
   whatsappEnabled: true,

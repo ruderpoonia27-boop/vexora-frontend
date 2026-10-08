@@ -68,7 +68,7 @@ const AdminLoginPage = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-input border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-              placeholder="admin@nexusarena.com"
+              placeholder="admin@example.com"
             />
           </div>
           

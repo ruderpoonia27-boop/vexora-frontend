@@ -3,20 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Trophy, Medal, Award, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import GameAvatar from '@/components/GameAvatar';
-import { AVATAR_COLLECTION } from '@/data/avatarCatalog';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
-
-const fakeNames = [
-  'ShadowViper', 'NovaRush', 'AlphaSniper', 'BlazeX', 'GhostRider', 'StormHex', 'ClutchKing', 'FrostByte', 'NightFury', 'ZeroLag',
-  'RapidFire', 'SilentShot', 'PixelPredator', 'WreckZone', 'InfernoFox', 'DarkOrbit', 'AimBotX', 'SkullBreaker', 'NeonHawk', 'WarPulse'
-];
-
-const buildFakePlayers = () => Array.from({ length: 40 }, (_, index) => ({
-  id: `fake_${index + 1}`,
-  name: `${fakeNames[index % fakeNames.length]}${index + 1}`,
-  walletBalance: Math.max(4050, 4980 - (index * 24)),
-  avatarId: AVATAR_COLLECTION[index % AVATAR_COLLECTION.length].id
-}));
 
 const getRankBadge = (index) => {
   if (index === 0) return <div className="w-8 h-8 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center border border-yellow-500/50 box-glow-accent"><Trophy className="w-4 h-4" /></div>;
@@ -37,9 +24,9 @@ const LeaderboardPage = () => {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const result = await apiClient.get('/users?limit=250');
+        const result = await apiClient.get('/users/leaderboard?limit=25');
         if (!isMounted) return;
-        setRealUsers(result.items || result.users || []);
+        setRealUsers(result.items || []);
       } catch (error) {
         console.error('Failed to load leaderboard users:', error);
         if (isMounted) {
@@ -58,19 +45,12 @@ const LeaderboardPage = () => {
     };
   }, []);
 
-  const leaderboard = useMemo(() => {
-    const fakePlayers = buildFakePlayers();
-    const realPlayers = realUsers.map((user) => ({
-      id: user.id || user._id,
-      name: user.name || 'Anonymous Player',
-      avatarId: user.avatarId || user.avatar_id,
-      walletBalance: Number(user.walletBalance ?? user.wallet_balance ?? 0)
-    }));
-
-    return [...fakePlayers, ...realPlayers]
-      .sort((left, right) => right.walletBalance - left.walletBalance)
-      .slice(0, 25);
-  }, [realUsers]);
+  const leaderboard = useMemo(() => realUsers.map((user) => ({
+    id: user.id || user._id,
+    name: user.name || 'Anonymous Player',
+    avatarId: user.avatarId || user.avatar_id,
+    totalWinnings: Number(user.totalWinnings || 0)
+  })), [realUsers]);
 
   return (
     <div className="min-h-screen bg-background text-foreground py-12">
@@ -81,7 +61,7 @@ const LeaderboardPage = () => {
       <div className="container mx-auto px-4 max-w-5xl">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-glow-accent text-accent">Top 25 Leaderboard</h1>
-          <p className="text-muted-foreground text-lg">Ranked by wallet balance amount.</p>
+          <p className="text-muted-foreground text-lg">Ranked by total prize money won in tournaments.</p>
         </div>
 
         <div className="bg-card border border-border/50 rounded-3xl overflow-hidden shadow-2xl">
@@ -91,14 +71,14 @@ const LeaderboardPage = () => {
                 <tr className="bg-background/80 text-muted-foreground text-sm uppercase tracking-wider">
                   <th className="p-6 font-medium w-24 text-center">Rank</th>
                   <th className="p-6 font-medium">Player</th>
-                  <th className="p-6 font-medium text-right">Wallet Balance</th>
+                  <th className="p-6 font-medium text-right">Winnings</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {loading ? (
                   <tr><td colSpan="3" className="p-12 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-accent" /></td></tr>
                 ) : leaderboard.length === 0 ? (
-                  <tr><td colSpan="3" className="p-12 text-center text-muted-foreground">No players available yet.</td></tr>
+                  <tr><td colSpan="3" className="p-12 text-center text-muted-foreground">No winners yet. Join a tournament and be the first on the board!</td></tr>
                 ) : leaderboard.map((user, index) => (
                   <tr key={user.id} className="hover:bg-background/50 transition-colors group">
                     <td className="p-6">
@@ -115,7 +95,7 @@ const LeaderboardPage = () => {
                       </div>
                     </td>
                     <td className="p-6 text-right">
-                      <p className="font-bold text-secondary text-xl">Rs.{user.walletBalance}</p>
+                      <p className="font-bold text-secondary text-xl">₹{user.totalWinnings.toLocaleString('en-IN')}</p>
                     </td>
                   </tr>
                 ))}

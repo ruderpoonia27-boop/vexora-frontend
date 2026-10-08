@@ -67,7 +67,7 @@ export const Header = () => {
             <Link to="/wallet" className={`text-sm font-medium transition-colors hover:text-primary ${isActive('/wallet') ? 'text-primary' : 'text-muted-foreground'}`}>Wallet</Link>
           ) : null}
           {isAdminAuthenticated ? (
-            <Link to="/admin-dashboard" className={`text-sm font-medium transition-colors hover:text-accent ${isActive('/admin-dashboard') ? 'text-accent' : 'text-muted-foreground'}`}>Admin Dashboard</Link>
+            <Link to="/admin" className={`text-sm font-medium transition-colors hover:text-accent ${isActive('/admin') ? 'text-accent' : 'text-muted-foreground'}`}>Admin Panel</Link>
           ) : null}
         </nav>
 

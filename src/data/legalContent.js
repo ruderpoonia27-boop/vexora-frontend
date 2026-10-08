@@ -1,5 +1,5 @@
 export const LEGAL_LAST_UPDATED = 'May 15, 2026';
-export const PLATFORM_NAME = 'Nexus Arena';
+export const PLATFORM_NAME = 'Vexora';
 export const COMPANY_NAME = 'Nexus Arena Esports Pvt. Ltd. (Placeholder)';
 export const SUPPORT_EMAIL = 'support@nexusarena.example.com';
 export const SUPPORT_WHATSAPP = 'https://whatsapp.com/channel/0029Vb7fa2kK0IBoyxQitT0g';

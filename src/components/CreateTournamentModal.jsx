@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
+import PlatformFeeSection from '@/components/PlatformFeeSection';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -31,6 +32,7 @@ const initialFormData = {
   entry_fee: '',
   base_prize: '',
   prize_distribution_type: 'percentage',
+  platform_fee_percentage: '50',
   winner_count_mode: '3',
   custom_winner_count: '4',
   prize_display_note: '',
@@ -121,6 +123,11 @@ const CreateTournamentModal = ({ isOpen, onOpenChange, onSuccess }) => {
     if (Number.isNaN(basePrize) || basePrize < 0) {
       return toast({ title: 'Validation Error', description: 'Prize pool must be a valid number.', variant: 'destructive' });
     }
+    const platformFee = Number(formData.platform_fee_percentage);
+    const chargesPlatformFee = paidEntry && formData.prize_distribution_type === 'percentage';
+    if (chargesPlatformFee && (formData.platform_fee_percentage === '' || Number.isNaN(platformFee) || platformFee < 0 || platformFee > 90)) {
+      return toast({ title: 'Validation Error', description: 'Platform fee must be between 0% and 90%.', variant: 'destructive' });
+    }
     if (formData.prize_distribution_type === 'percentage' && distributionTotal !== 100) {
       return toast({ title: 'Validation Error', description: 'Prize percentages must total 100%.', variant: 'destructive' });
     }
@@ -145,6 +152,7 @@ const CreateTournamentModal = ({ isOpen, onOpenChange, onSuccess }) => {
         entry_fee: entryFee,
         base_prize: formData.prize_distribution_type === 'fixed' ? distributionTotal : basePrize,
         prize_distribution_type: formData.prize_distribution_type,
+        platform_fee_percentage: chargesPlatformFee ? platformFee : 0,
         winner_count: winnerCount,
         prize_distribution: prizeDistribution,
         prize_display_note: formData.prize_display_note.trim(),
@@ -309,6 +317,17 @@ const CreateTournamentModal = ({ isOpen, onOpenChange, onSuccess }) => {
                 {formData.prize_distribution_type === 'percentage' ? `Total: ${distributionTotal}%` : `Total Prize Pool: Rs.${distributionTotal}`}
               </p>
             </div>
+
+            {formData.entry_type === 'paid' && formData.prize_distribution_type === 'percentage' ? (
+              <PlatformFeeSection
+                feePercentage={formData.platform_fee_percentage}
+                onFeeChange={(value) => setFormData((current) => ({ ...current, platform_fee_percentage: value }))}
+                entryFee={formData.entry_fee}
+                totalSlots={formData.total_slots}
+                basePrize={formData.base_prize}
+                distribution={formData.prize_distribution}
+              />
+            ) : null}
           </div>
 
           <div className="pt-4 border-t border-border/50">

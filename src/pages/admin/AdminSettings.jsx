@@ -6,6 +6,12 @@ import apiClient from '@/lib/apiClient';
 import { DEFAULT_CONTACT_SETTINGS, DEFAULT_PLATFORM_NAME, getPlatformName, useSettings } from '@/hooks/useSettings.js';
 import { usePaymentSettings } from '@/hooks/usePaymentSettings';
 
+const DISPLAY_MODE_OPTIONS = [
+  { value: 'both', label: 'UPI ID + QR code', hint: 'Players can scan or pay to the ID' },
+  { value: 'upi', label: 'Only UPI ID', hint: 'QR code stays hidden' },
+  { value: 'qr', label: 'Only QR code', hint: 'UPI ID stays hidden' }
+];
+
 const PaymentSettingsPanel = () => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -15,6 +21,7 @@ const PaymentSettingsPanel = () => {
   const [formData, setFormData] = useState({
     upi_id: ''
   });
+  const [displayMode, setDisplayMode] = useState('both');
   const [qrCodeValue, setQrCodeValue] = useState('');
   const [qrCodePreview, setQrCodePreview] = useState(null);
 
@@ -56,7 +63,8 @@ const PaymentSettingsPanel = () => {
     });
     setQrCodeValue(paymentSettings.qr_code || '');
     setQrCodePreview(paymentSettings.qr_code || null);
-  }, [paymentSettings.qr_code, paymentSettings.upi_id]);
+    setDisplayMode(paymentSettings.display_mode || 'both');
+  }, [paymentSettings.display_mode, paymentSettings.qr_code, paymentSettings.upi_id]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -97,13 +105,24 @@ const PaymentSettingsPanel = () => {
       return;
     }
 
+    if (displayMode !== 'qr' && !formData.upi_id.trim()) {
+      toast({ title: "UPI ID needed", description: displayMode === 'upi' ? "Add a UPI ID to show on the deposit page." : "Add a UPI ID, or choose 'Only QR code'.", variant: "destructive" });
+      return;
+    }
+    if (displayMode !== 'upi' && !qrCodeValue) {
+      toast({ title: "QR code needed", description: displayMode === 'qr' ? "Upload a QR code to show on the deposit page." : "Upload a QR code, or choose 'Only UPI ID'.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
       const updated = await apiClient.put(`/payment-settings/${recordId}`, {
-        upi_id: formData.upi_id,
-        qr_code: qrCodeValue
+        upi_id: formData.upi_id.trim(),
+        qr_code: qrCodeValue,
+        display_mode: displayMode
       });
       setFormData({ upi_id: updated.upi_id || '' });
+      setDisplayMode(updated.display_mode || 'both');
       setQrCodeValue(updated.qr_code || '');
       setQrCodePreview(updated.qr_code || null);
       await refreshPaymentSettings(false);
@@ -120,8 +139,8 @@ const PaymentSettingsPanel = () => {
   if (loading) return <Skeleton className="h-64 w-full rounded-2xl" />;
 
   const activeMethods = [];
-  if (formData.upi_id) activeMethods.push('UPI');
-  if (qrCodePreview) activeMethods.push('QR Code');
+  if (formData.upi_id && displayMode !== 'qr') activeMethods.push('UPI');
+  if (qrCodePreview && displayMode !== 'upi') activeMethods.push('QR Code');
 
   return (
     <div className="bg-card border border-border/50 p-6 rounded-2xl space-y-6 shadow-sm">
@@ -136,6 +155,28 @@ const PaymentSettingsPanel = () => {
       </div>
       
       <form onSubmit={handleSave} className="space-y-6">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Show on the deposit page</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {DISPLAY_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setDisplayMode(option.value)}
+                aria-pressed={displayMode === option.value}
+                className={`rounded-xl border px-4 py-3 text-left transition-all ${
+                  displayMode === option.value
+                    ? 'border-accent/50 bg-accent/15 text-accent'
+                    : 'border-border bg-background/50 text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <span className="block text-sm font-bold">{option.label}</span>
+                <span className="block text-xs opacity-80">{option.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="space-y-2">

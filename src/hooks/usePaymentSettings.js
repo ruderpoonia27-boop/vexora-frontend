@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import apiClient from '@/lib/apiClient';
 
 const defaultPaymentSettings = {
-  upi_id: 'tournament@upi',
-  qr_code: ''
+  upi_id: '',
+  qr_code: '',
+  display_mode: 'both'
 };
 
 export const usePaymentSettings = ({ autoRefresh = true } = {}) => {
@@ -26,8 +27,9 @@ export const usePaymentSettings = ({ autoRefresh = true } = {}) => {
       if (record) {
         setRecordId(record._id || record.id || null);
         setPaymentSettings({
-          upi_id: record.upi_id || 'tournament@upi',
-          qr_code: record.qr_code || ''
+          upi_id: record.upi_id || '',
+          qr_code: record.qr_code || '',
+          display_mode: ['upi', 'qr'].includes(record.display_mode) ? record.display_mode : 'both'
         });
       } else {
         setRecordId(null);

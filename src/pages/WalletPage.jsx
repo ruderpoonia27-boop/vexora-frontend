@@ -78,8 +78,10 @@ const ManualDepositForm = ({ wallet, onDone }) => {
 
   const { paymentSettings, loading: paymentLoading } = usePaymentSettings({ autoRefresh: false });
   const { minDeposit } = wallet.limits;
-  const upiId = paymentSettings.upi_id;
-  const qrCode = paymentSettings.qr_code;
+  // Admin chooses whether players see the UPI ID, the QR code, or both.
+  const displayMode = paymentSettings.display_mode || 'both';
+  const upiId = displayMode !== 'qr' ? paymentSettings.upi_id : '';
+  const qrCode = displayMode !== 'upi' ? paymentSettings.qr_code : '';
   const numericAmount = Number(amount);
   const amountValid = Number.isFinite(numericAmount) && numericAmount >= minDeposit;
   const utrValid = /^[A-Za-z0-9]{6,30}$/.test(utr.trim());
@@ -123,39 +125,44 @@ const ManualDepositForm = ({ wallet, onDone }) => {
         <StepLabel number={2}>Pay {amountValid ? formatMoney(numericAmount) : ''} using any UPI app</StepLabel>
         {paymentLoading ? (
           <Skeleton className="h-40 w-full rounded-xl" />
-        ) : upiId ? (
-          <div className="flex flex-col gap-4 rounded-xl border border-border bg-background/40 p-4 sm:flex-row sm:items-center">
+        ) : upiId || qrCode ? (
+          <div className={`flex flex-col gap-4 rounded-xl border border-border bg-background/40 p-4 ${upiId && qrCode ? 'sm:flex-row sm:items-center' : 'items-center text-center'}`}>
             {qrCode ? (
-              <img
-                src={qrCode}
-                alt="UPI payment QR code"
-                className="mx-auto h-36 w-36 shrink-0 rounded-lg bg-white object-contain p-1.5 sm:mx-0"
-              />
-            ) : null}
-            <div className="min-w-0 flex-1 space-y-3">
-              <div>
-                <p className="text-xs text-muted-foreground">{qrCode ? 'Scan the QR or pay to this UPI ID' : 'Pay to this UPI ID'}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <p className="min-w-0 break-all font-mono text-base font-bold text-foreground">{upiId}</p>
-                  <button
-                    type="button"
-                    onClick={copyUpi}
-                    aria-label="Copy UPI ID"
-                    className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition hover:border-primary/50 hover:text-primary"
-                  >
-                    {copied ? <Check className="h-4 w-4 text-secondary" /> : <Copy className="h-4 w-4" />}
-                  </button>
-                </div>
+              <div className="shrink-0 text-center">
+                <img
+                  src={qrCode}
+                  alt="UPI payment QR code"
+                  className={`mx-auto rounded-lg bg-white object-contain p-1.5 ${upiId ? 'h-36 w-36' : 'h-52 w-52'}`}
+                />
+                {!upiId ? <p className="mt-2 text-xs text-muted-foreground">Scan this QR with any UPI app and pay the exact amount</p> : null}
               </div>
-              {upiLink ? (
-                <a
-                  href={upiLink}
-                  className="inline-flex items-center justify-center rounded-lg border border-primary/40 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 md:hidden"
-                >
-                  Open UPI app
-                </a>
-              ) : null}
-            </div>
+            ) : null}
+            {upiId ? (
+              <div className="w-full min-w-0 flex-1 space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">{qrCode ? 'Scan the QR or pay to this UPI ID' : 'Pay to this UPI ID'}</p>
+                  <div className={`mt-1 flex items-center gap-2 ${qrCode ? '' : 'justify-center'}`}>
+                    <p className="min-w-0 break-all font-mono text-base font-bold text-foreground">{upiId}</p>
+                    <button
+                      type="button"
+                      onClick={copyUpi}
+                      aria-label="Copy UPI ID"
+                      className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                    >
+                      {copied ? <Check className="h-4 w-4 text-secondary" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                {upiLink ? (
+                  <a
+                    href={upiLink}
+                    className="inline-flex items-center justify-center rounded-lg border border-primary/40 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/10 md:hidden"
+                  >
+                    Open UPI app
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">

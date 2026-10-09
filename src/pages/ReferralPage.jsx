@@ -1,37 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
+import { Link } from 'react-router-dom';
 import Confetti from 'react-confetti';
-import {
-  CheckCircle2,
-  Copy,
-  Loader2,
-  Rocket,
-  Send,
-  Share2,
-  Sparkles,
-  Swords,
-  Trophy,
-  Users
-} from 'lucide-react';
+import { Check, Clock3, Copy, Gift, Link2, Loader2, MessageCircle, Send, Share2, Ticket, Trophy, UserPlus, Wallet } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getPlatformName, useSettings } from '@/hooks/useSettings';
 import GameAvatar from '@/components/GameAvatar';
 
-const stageConfig = (item) => {
-  if (item.depositComplete) {
-    return {
-      percent: 100,
-      statusLabel: 'Deposit Complete',
-      barClass: 'from-secondary via-primary to-accent'
-    };
-  }
+const FRIENDS_PER_ENTRY = 3;
 
-  return {
-    percent: 50,
-    statusLabel: 'Signup Complete',
-    barClass: 'from-primary via-primary to-primary/40'
-  };
+const steps = [
+  { icon: Share2, title: 'Share your link', text: 'Send it to friends on WhatsApp or anywhere.' },
+  { icon: Wallet, title: 'Friend joins and deposits', text: 'They sign up with your link and add money once.' },
+  { icon: Ticket, title: 'You play free', text: `Every ${FRIENDS_PER_ENTRY} friends = 1 free entry into a paid solo tournament.` }
+];
+
+const formatJoined = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 };
 
 const ReferralPage = () => {
@@ -39,299 +26,280 @@ const ReferralPage = () => {
   const { settings } = useSettings();
   const platformName = getPlatformName(settings);
   const [loading, setLoading] = useState(true);
-  const [referralData, setReferralData] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [showAchievement, setShowAchievement] = useState(false);
-  const [viewport, setViewport] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 0,
-    height: typeof window !== 'undefined' ? window.innerHeight : 0
-  });
-
-  const loadReferralData = async () => {
-    setLoading(true);
-    try {
-      const data = await apiClient.get('/referrals/me');
-      setReferralData(data);
-    } catch (error) {
-      toast({
-        title: 'Unable to load referral center',
-        description: error.message || 'Please refresh and try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [data, setData] = useState(null);
+  const [copiedKey, setCopiedKey] = useState('');
+  const [celebrate, setCelebrate] = useState(false);
 
   useEffect(() => {
-    loadReferralData();
-  }, []);
+    let active = true;
+    apiClient.get('/referrals/me', { cacheTtl: 0 })
+      .then((result) => { if (active) setData(result); })
+      .catch((error) => {
+        toast({ title: 'Could not load referrals', description: error.message || 'Please try again.', variant: 'destructive' });
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [toast]);
 
+  // Celebrate a newly earned free entry once per browser session.
+  const latestAchievement = data?.achievements?.[0];
   useEffect(() => {
-    const handleResize = () => {
-      setViewport({
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const latestAchievement = referralData?.achievements?.[0] || null;
-
-  useEffect(() => {
-    if (!latestAchievement?.id) return;
-
+    if (!latestAchievement?.id) return undefined;
     const seenKey = `referral-achievement:${latestAchievement.id}`;
-    if (sessionStorage.getItem(seenKey)) {
-      return;
+    try {
+      if (sessionStorage.getItem(seenKey)) return undefined;
+      sessionStorage.setItem(seenKey, 'seen');
+    } catch {
+      return undefined;
     }
-
-    sessionStorage.setItem(seenKey, 'seen');
-    setShowAchievement(true);
-
-    const timer = window.setTimeout(() => setShowAchievement(false), 5200);
+    setCelebrate(true);
+    const timer = window.setTimeout(() => setCelebrate(false), 5000);
     return () => window.clearTimeout(timer);
   }, [latestAchievement?.id]);
 
-  const completionRatio = useMemo(() => (
-    `${referralData?.stats?.currentProgress || 0} / 3`
-  ), [referralData?.stats?.currentProgress]);
-
-  const handleCopy = async (value, label) => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast({ title: `${label} copied`, description: 'Ready to share with your squad.' });
-    window.setTimeout(() => setCopied(false), 1800);
-  };
-
-  const handleNativeShare = async () => {
-    if (!referralData?.referralLink) return;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Join me on ${platformName}`,
-          text: `Use my referral code ${referralData.referralCode} and start your grind on ${platformName}.`,
-          url: referralData.referralLink
-        });
-        return;
-      } catch {
-        // User cancelled share; fall through to web share buttons.
-      }
+  const copy = async (value, key, label) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedKey(key);
+      window.setTimeout(() => setCopiedKey(''), 1600);
+      toast({ title: `${label} copied` });
+    } catch {
+      toast({ title: 'Copy failed', description: 'Select it and copy manually.', variant: 'destructive' });
     }
-
-    await handleCopy(referralData.referralLink, 'Referral link');
   };
-
-  const socialShareLinks = useMemo(() => {
-    const link = encodeURIComponent(referralData?.referralLink || '');
-    const message = encodeURIComponent(`Join me on ${platformName} with my referral code ${referralData?.referralCode || ''}`);
-    return {
-      whatsapp: `https://wa.me/?text=${message}%20${link}`,
-      telegram: `https://t.me/share/url?url=${link}&text=${message}`
-    };
-  }, [platformName, referralData?.referralCode, referralData?.referralLink]);
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!referralData) {
-    return null;
+  if (!data) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="font-semibold">Referrals could not be loaded.</p>
+        <button type="button" onClick={() => window.location.reload()} className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+          Try again
+        </button>
+      </div>
+    );
   }
 
+  const { referralCode, referralLink, stats, referrals } = data;
+  const progress = Number(stats.currentProgress || 0);
+  const friendsNeeded = FRIENDS_PER_ENTRY - progress;
+  const freeEntries = Number(stats.freeEntriesAvailable ?? stats.freeEntriesEarned ?? 0);
+  const countedFriends = referrals.filter((friend) => friend.depositComplete).length;
+  const waitingFriends = referrals.length - countedFriends;
+
+  const shareText = `Join me on ${platformName} and play BGMI & Free Fire tournaments! Sign up with my link:`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${referralLink}`)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`;
+
+  const shareInvite = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Join me on ${platformName}`, text: shareText, url: referralLink });
+        return;
+      } catch {
+        // Share sheet dismissed; nothing else to do.
+        return;
+      }
+    }
+    window.open(whatsappUrl, '_blank', 'noopener');
+  };
+
   return (
-    <div className="relative min-h-[calc(100vh-64px)] overflow-x-clip bg-background py-8 md:py-12">
+    <div className="min-h-[calc(100vh-64px)] pb-28 pt-8 md:pb-16 md:pt-12">
       <Helmet>
-        <title>Referral Center | {platformName}</title>
+        <title>Refer & Earn | {platformName}</title>
       </Helmet>
 
-      {showAchievement ? (
-        <Confetti
-          width={viewport.width}
-          height={viewport.height}
-          recycle={false}
-          numberOfPieces={240}
-          gravity={0.16}
-        />
-      ) : null}
+      {celebrate ? <Confetti recycle={false} numberOfPieces={220} gravity={0.18} /> : null}
 
-      <div className="container relative z-10 mx-auto max-w-6xl px-4">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-4 w-4" /> Referral Center
-            </div>
-            <h1 className="text-3xl font-black uppercase tracking-tight md:text-4xl">
-              Squad Rewards
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Share your code. Every 3 first deposits unlocks 1 free entry.
-            </p>
-          </div>
+      <div className="container mx-auto max-w-2xl space-y-5 px-4">
+        <header className="text-center">
+          <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+            <Gift className="h-6 w-6" />
+          </span>
+          <h1 className="text-3xl font-black tracking-tight md:text-4xl">Invite friends, play free</h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground md:text-base">
+            Get <strong className="text-foreground">1 free tournament entry</strong> for every {FRIENDS_PER_ENTRY} friends who join with your link and make their first deposit.
+          </p>
+        </header>
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-2xl border border-primary/25 bg-card/70 px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-primary/75">Entries</p>
-              <p className="mt-1 text-2xl font-black text-primary">{referralData.stats.freeEntriesEarned}</p>
+        {/* Progress towards the next free entry */}
+        <section className="rounded-2xl border border-primary/25 bg-[linear-gradient(145deg,rgba(0,212,255,0.10),rgba(217,70,239,0.06))] p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Next free entry</p>
+              <p className="mt-0.5 text-2xl font-black">
+                {progress} <span className="text-base font-bold text-muted-foreground">of {FRIENDS_PER_ENTRY} friends</span>
+              </p>
             </div>
-            <div className="rounded-2xl border border-accent/25 bg-card/70 px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-accent/80">Squads</p>
-              <p className="mt-1 text-2xl font-black text-accent">{referralData.stats.squadsCompleted}</p>
-            </div>
-            <div className="rounded-2xl border border-secondary/25 bg-card/70 px-4 py-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-secondary/80">Progress</p>
-              <p className="mt-1 text-2xl font-black text-secondary">{completionRatio}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-          <section className="rounded-3xl border border-primary/15 bg-card/70 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.24)] md:p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-2xl bg-primary/12 p-3 text-primary">
-                <Rocket className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Share Your Invite</h2>
-              </div>
-            </div>
-
-            <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
-              <div className="rounded-2xl border border-primary/20 bg-primary/8 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-primary/80">Referral Code</p>
-                <p className="mt-2 break-all text-2xl font-black text-primary text-glow-primary">{referralData.referralCode}</p>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(referralData.referralCode, 'Referral code')}
-                  className="mt-3 inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-all hover:scale-[1.02] hover:bg-primary hover:text-primary-foreground"
+            <div className="flex gap-2" aria-label={`${progress} of ${FRIENDS_PER_ENTRY} friends counted`}>
+              {Array.from({ length: FRIENDS_PER_ENTRY }, (_, index) => (
+                <span
+                  key={index}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
+                    index < progress ? 'border-secondary bg-secondary/20 text-secondary' : 'border-dashed border-border text-muted-foreground/50'
+                  }`}
                 >
-                  <Copy className="h-4 w-4" /> {copied ? 'Copied' : 'Copy Code'}
-                </button>
-              </div>
-
-              <div className="rounded-2xl border border-border/60 bg-background/35 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Referral Link</p>
-                <p className="mt-2 break-all rounded-xl border border-primary/15 bg-background/60 px-3 py-2 font-mono text-sm text-foreground">
-                  {referralData.referralLink}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(referralData.referralLink, 'Referral link')}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground transition-all hover:scale-[1.02] hover:bg-primary/90"
-                  >
-                    <Copy className="h-4 w-4" /> Copy Link
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNativeShare}
-                    className="inline-flex items-center gap-2 rounded-xl border border-accent/25 bg-accent/10 px-3 py-2 text-sm font-bold text-accent transition-all hover:scale-[1.02] hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <Share2 className="h-4 w-4" /> Share
-                  </button>
-                  <a
-                    href={socialShareLinks.whatsapp}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl border border-secondary/25 bg-secondary/10 px-3 py-2 text-sm font-bold text-secondary transition-all hover:scale-[1.02]"
-                  >
-                    <Send className="h-4 w-4" /> WhatsApp
-                  </a>
-                  <a
-                    href={socialShareLinks.telegram}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-all hover:scale-[1.02]"
-                  >
-                    <Send className="h-4 w-4" /> Telegram
-                  </a>
-                </div>
-              </div>
+                  {index < progress ? <Check className="h-5 w-5" /> : <UserPlus className="h-4 w-4" />}
+                </span>
+              ))}
             </div>
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {friendsNeeded === FRIENDS_PER_ENTRY
+              ? `Invite ${FRIENDS_PER_ENTRY} friends to unlock a free entry.`
+              : `Just ${friendsNeeded} more ${friendsNeeded === 1 ? 'friend' : 'friends'} to go!`}
+          </p>
 
-            <div className="mt-3 flex items-center gap-2 rounded-2xl border border-secondary/20 bg-secondary/10 px-4 py-3 text-sm text-muted-foreground">
-              <Swords className="h-4 w-4 text-secondary" />
-              <span><strong className="text-foreground">{referralData.stats.completedReferrals}</strong> completed referrals. Target: <strong className="text-foreground">3</strong> for each free entry.</span>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.24)] md:p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-2xl bg-accent/12 p-3 text-accent">
-                <Users className="h-5 w-5" />
-              </div>
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Ticket className="h-5 w-5 text-accent" />
               <div>
-                <h2 className="text-xl font-bold">Referral Progress</h2>
+                <p className="text-sm font-bold text-foreground">{freeEntries} free {freeEntries === 1 ? 'entry' : 'entries'} available</p>
+                <p className="text-xs text-muted-foreground">Pick "Use Free Entry" when you join a paid solo tournament.</p>
               </div>
             </div>
+            {freeEntries > 0 ? (
+              <Link to="/tournaments" className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-bold text-accent-foreground hover:bg-accent/90">
+                Use now
+              </Link>
+            ) : null}
+          </div>
+        </section>
 
-            <div className="space-y-3">
-              {referralData.referrals.length > 0 ? referralData.referrals.map((item) => {
-                const stage = stageConfig(item);
-                return (
-                  <div
-                    key={item.id}
-                    className="page-transition rounded-2xl border border-border/60 bg-background/35 p-4"
-                  >
-                    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3">
-                        <GameAvatar avatarId={item.avatarId} name={item.username} size="sm" className="rounded-xl" />
-                        <div>
-                          <p className="font-bold text-foreground">{item.username}</p>
-                          <p className="text-xs text-muted-foreground">{item.email || 'Arena recruit'}</p>
-                        </div>
-                      </div>
-                      <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] ${
-                        item.depositComplete
-                          ? 'bg-secondary/15 text-secondary'
-                          : 'bg-primary/15 text-primary'
-                      }`}>
-                        {item.depositComplete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                        {stage.statusLabel}
-                      </div>
-                    </div>
-
-                    <div className="overflow-hidden rounded-full border border-primary/15 bg-background/70">
-                      <div
-                        style={{ width: `${stage.percent}%`, transition: 'width 240ms ease' }}
-                        className={`h-2 rounded-full bg-gradient-to-r ${stage.barClass}`}
-                      />
-                    </div>
-                  </div>
-                );
-              }) : (
-                <div className="rounded-2xl border border-dashed border-border/60 bg-background/35 px-6 py-10 text-center">
-                  <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-                  <p className="font-semibold text-foreground">No invited players yet</p>
-                </div>
-              )}
+        {/* Share */}
+        <section className="rounded-2xl border border-border bg-card/60 p-5">
+          <h2 className="text-lg font-bold">Your invite</h2>
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Your code</p>
+              <p className="truncate font-mono text-2xl font-black tracking-wider text-primary">{referralCode}</p>
             </div>
-          </section>
-        </div>
+            <button
+              type="button"
+              onClick={() => copy(referralCode, 'code', 'Code')}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10"
+            >
+              {copiedKey === 'code' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copiedKey === 'code' ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={shareInvite}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3.5 font-bold text-primary-foreground transition hover:bg-primary/90"
+          >
+            <Share2 className="h-5 w-5" /> Share invite link
+          </button>
+
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => copy(referralLink, 'link', 'Invite link')}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-2 py-2.5 text-sm font-semibold text-foreground hover:border-primary/40"
+            >
+              {copiedKey === 'link' ? <Check className="h-4 w-4 shrink-0 text-secondary" /> : <Link2 className="h-4 w-4 shrink-0" />} Link
+            </button>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-2 py-2.5 text-sm font-semibold text-foreground hover:border-secondary/50"
+            >
+              <MessageCircle className="h-4 w-4 shrink-0 text-secondary" /> WhatsApp
+            </a>
+            <a
+              href={telegramUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-border px-2 py-2.5 text-sm font-semibold text-foreground hover:border-primary/50"
+            >
+              <Send className="h-4 w-4 shrink-0 text-primary" /> Telegram
+            </a>
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="rounded-2xl border border-border bg-card/40 p-5">
+          <h2 className="mb-4 text-lg font-bold">How it works</h2>
+          <ol className="space-y-4">
+            {steps.map((step, index) => (
+              <li key={step.title} className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-black text-primary">{index + 1}</span>
+                <div>
+                  <p className="font-semibold text-foreground">{step.title}</p>
+                  <p className="text-sm text-muted-foreground">{step.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Friends */}
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <h2 className="text-lg font-bold">Your friends</h2>
+            {referrals.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-secondary">{countedFriends} counted</span>
+                {waitingFriends > 0 ? <> · <span className="font-semibold text-amber-300">{waitingFriends} waiting</span></> : null}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
+            {referrals.length > 0 ? (
+              <ul className="divide-y divide-border/60">
+                {referrals.map((friend) => (
+                  <li key={friend.id} className="flex items-center gap-3 px-4 py-3">
+                    <GameAvatar avatarId={friend.avatarId} name={friend.username} size="sm" className="rounded-xl" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">{friend.username}</p>
+                      <p className="text-xs text-muted-foreground">Joined {formatJoined(friend.joinedAt)}</p>
+                    </div>
+                    {friend.depositComplete ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-secondary/15 px-2.5 py-1 text-xs font-semibold text-secondary">
+                        <Check className="h-3.5 w-3.5" /> Counted
+                      </span>
+                    ) : (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400/10 px-2.5 py-1 text-xs font-semibold text-amber-300">
+                        <Clock3 className="h-3.5 w-3.5" /> Waiting for deposit
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="px-6 py-10 text-center">
+                <UserPlus className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p className="font-semibold text-foreground">No friends invited yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Share your link. Friends who sign up show here.</p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
-      {showAchievement && latestAchievement ? (
-          <div className="page-transition fixed inset-x-4 bottom-28 z-[60] mx-auto max-w-md rounded-[28px] border border-secondary/30 bg-[rgba(12,20,40,0.96)] p-5 shadow-[0_0_28px_rgba(34,197,94,0.14)] backdrop-blur-2xl">
-            <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-secondary/15 p-3 text-secondary">
-                <Trophy className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-secondary/80">Achievement Unlocked</p>
-                <p className="mt-2 text-xl font-black text-secondary">{latestAchievement.title}</p>
-                <p className="mt-1 text-sm text-foreground">{latestAchievement.subtitle}</p>
-              </div>
+      {celebrate && latestAchievement ? (
+        <div className="page-transition fixed inset-x-4 bottom-28 z-[60] mx-auto max-w-sm rounded-2xl border border-secondary/30 bg-card/95 p-4 shadow-2xl backdrop-blur lg:bottom-8">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary/15 text-secondary">
+              <Trophy className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="font-black text-secondary">Free entry unlocked!</p>
+              <p className="text-sm text-muted-foreground">{FRIENDS_PER_ENTRY} more friends made their first deposit.</p>
             </div>
           </div>
-        ) : null}
+        </div>
+      ) : null}
     </div>
   );
 };

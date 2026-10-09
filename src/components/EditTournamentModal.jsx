@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
+import PlatformFeeSection from '@/components/PlatformFeeSection';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -30,6 +31,7 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
     squad_size: '4',
     entry_fee: '',
     base_prize: '',
+    platform_fee_percentage: '50',
     prize_pool_visible: true,
     first_prize_percentage: '50',
     solo_first_place_percentage: '60',
@@ -50,6 +52,7 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
       squad_size: String(tournament.squad_size || tournament.squadSize || 4),
       entry_fee: String(tournament.entry_fee ?? 0),
       base_prize: String(tournament.base_prize ?? 0),
+      platform_fee_percentage: String(tournament.platform_fee_percentage ?? tournament.platformFeePercentage ?? 50),
       prize_pool_visible: tournament.prize_pool_visible ?? tournament.prizePoolVisible ?? true,
       first_prize_percentage: String(tournament.first_prize_percentage ?? tournament.firstPrizePercentage ?? 50),
       solo_first_place_percentage: String(tournament.solo_first_place_percentage ?? tournament.soloFirstPlacePercentage ?? 60),
@@ -65,6 +68,11 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
   const handleChange = (event) => {
     setFormData((current) => ({ ...current, [event.target.name]: event.target.value }));
   };
+
+  // The fee only applies to paid tournaments whose prizes are a percentage of entries.
+  const savedDistribution = tournament?.prize_distribution || tournament?.prizeDistribution || [];
+  const chargesPlatformFee = Number(formData.entry_fee) > 0
+    && (tournament?.prize_distribution_type || tournament?.prizeDistributionType || 'percentage') === 'percentage';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -82,6 +90,10 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
     const soloThirdPlacePercentage = Number(formData.solo_third_place_percentage);
     const totalSlots = Number(formData.total_slots);
     const squadSize = Number(formData.squad_size || 1);
+    const platformFee = Number(formData.platform_fee_percentage);
+    if (chargesPlatformFee && (formData.platform_fee_percentage === '' || Number.isNaN(platformFee) || platformFee < 0 || platformFee > 90)) {
+      return toast({ title: 'Validation Error', description: 'Platform fee must be between 0% and 90%.', variant: 'destructive' });
+    }
 
     if (entryFee < 0 || basePrize < 0 || totalSlots < 1 || Number.isNaN(entryFee) || Number.isNaN(basePrize) || Number.isNaN(totalSlots)) {
       return toast({ title: 'Validation Error', description: 'Please enter valid positive numbers.', variant: 'destructive' });
@@ -111,6 +123,7 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
         squad_size: formData.match_type === 'squad' ? squadSize : 1,
         entry_fee: entryFee,
         base_prize: basePrize,
+        ...(chargesPlatformFee ? { platform_fee_percentage: platformFee } : {}),
         prize_pool_visible: formData.prize_pool_visible,
         first_prize_percentage: formData.match_type === 'squad' ? firstPrizePercentage : 100,
         solo_first_place_percentage: formData.match_type === 'solo' ? soloFirstPlacePercentage : 60,
@@ -302,7 +315,7 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
             <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
               <div className="mb-3">
                 <h4 className="text-sm font-bold text-foreground">Solo Prize Distribution</h4>
-                <p className="text-xs text-muted-foreground">Reward pool total collection ka 50% hoga. Total exactly 100% hona chahiye.</p>
+                <p className="text-xs text-muted-foreground">Percentages of the prize pool (after the platform fee). Total must be exactly 100%.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
@@ -322,6 +335,17 @@ const EditTournamentModal = ({ isOpen, onOpenChange, tournament, onSuccess }) =>
                 Total: {Number(formData.solo_first_place_percentage) + Number(formData.solo_second_place_percentage) + Number(formData.solo_third_place_percentage)}%
               </p>
             </div>
+          ) : null}
+
+          {chargesPlatformFee ? (
+            <PlatformFeeSection
+              feePercentage={formData.platform_fee_percentage}
+              onFeeChange={(value) => setFormData((current) => ({ ...current, platform_fee_percentage: value }))}
+              entryFee={formData.entry_fee}
+              totalSlots={formData.total_slots}
+              basePrize={formData.base_prize}
+              distribution={savedDistribution}
+            />
           ) : null}
 
           <div className="pt-4 border-t border-border/50">

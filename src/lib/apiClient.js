@@ -73,7 +73,12 @@ class ApiClient {
 
     const runRequest = async () => {
       try {
-        const response = await fetch(`${this.baseURL}${endpoint}`, requestOptions);
+        let response = await fetch(`${this.baseURL}${endpoint}`, requestOptions);
+        // The backend answers 503 for a few seconds while its database (re)connects; retry reads quietly.
+        for (let attempt = 1; isGet && response.status === 503 && attempt <= 3; attempt += 1) {
+          await new Promise((resolve) => { window.setTimeout(resolve, 2500); });
+          response = await fetch(`${this.baseURL}${endpoint}`, requestOptions);
+        }
 
         const contentType = response.headers.get('content-type') || '';
         const rawText = await response.text();
